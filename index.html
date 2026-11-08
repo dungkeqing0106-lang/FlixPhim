@@ -256,7 +256,7 @@ nav button svg{width:20px;height:20px}
 main{padding-bottom:calc(88px + env(safe-area-inset-bottom,0px))}
 .ibar{bottom:calc(76px + env(safe-area-inset-bottom,0px))}
 @media(orientation:landscape){
- aside{left:auto;right:calc(8px + env(safe-area-inset-right,0px));top:0;bottom:0;margin:auto 0;width:auto;height:-webkit-fit-content;height:fit-content;padding:4px}
+ aside{left:auto;right:calc(12px + env(safe-area-inset-right,0px));top:0;bottom:0;margin:auto 0;width:auto;height:-webkit-fit-content;height:fit-content;padding:4px}
  nav{flex-direction:column;gap:2px}
  nav button{min-width:0;width:56px;min-height:48px;padding:5px 0;font-size:9.5px;line-height:1.15;white-space:nowrap;overflow:hidden}
  main{padding-bottom:calc(40px + env(safe-area-inset-bottom,0px))}
@@ -264,6 +264,13 @@ main{padding-bottom:calc(88px + env(safe-area-inset-bottom,0px))}
  .rail{margin-right:calc(-76px - env(safe-area-inset-right,0px));padding-right:calc(76px + env(safe-area-inset-right,0px))}
  .ibar{left:calc(50% - 34px);bottom:calc(14px + env(safe-area-inset-bottom,0px))}
 }
+/* Hàng phim vuốt tràn sát mép màn hình, không bị cắt cụt */
+:root{--gl:24px;--gr:24px}
+@media(min-width:721px) and (max-width:1366px){:root{--gl:max(28px,env(safe-area-inset-left,0px));--gr:max(28px,env(safe-area-inset-right,0px))}}
+@media(max-width:720px){:root{--gl:max(14px,env(safe-area-inset-left,0px));--gr:max(14px,env(safe-area-inset-right,0px))}}
+@media(orientation:landscape){:root{--gr:calc(76px + env(safe-area-inset-right,0px))}}
+.hwrap{padding-left:var(--gl);padding-right:var(--gr)}
+.rail{margin-left:calc(-1 * var(--gl));margin-right:calc(-1 * var(--gr));padding-left:var(--gl);padding-right:var(--gr);scroll-padding-left:var(--gl)}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
