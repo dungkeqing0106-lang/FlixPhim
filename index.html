@@ -370,6 +370,16 @@ html.tv .top .srch.open{pointer-events:auto}
 html.tv .top .brand{display:flex;position:fixed;top:calc(var(--safe) * .7);left:calc(var(--safe) * .9);margin:0;gap:calc(12px * var(--s));font-size:calc(22px * var(--s));text-shadow:0 2px 14px rgba(0,0,0,.65)}
 html.tv .top .brand .logo{width:calc(38px * var(--s));height:calc(38px * var(--s))}
 html.tv aside{padding-top:calc(var(--safe) * .7 + 76px * var(--s))}
+/* TV: thanh bên nhỏ gọn hơn */
+html.tv{--rail:calc(70px * var(--s))}
+html.tv aside:focus-within{width:calc(280px * var(--s))}
+html.tv aside{padding-top:calc(var(--safe) * .7 + 66px * var(--s))}
+html.tv nav button{min-height:calc(54px * var(--s));gap:calc(20px * var(--s));padding:0 calc(12px * var(--s)) 0 calc(22px * var(--s));font-size:calc(18px * var(--s))}
+html.tv nav button svg{width:calc(26px * var(--s));height:calc(26px * var(--s))}
+html.tv aside:focus-within nav button em{max-width:calc(200px * var(--s))}
+html.tv .navava{width:calc(30px * var(--s));height:calc(30px * var(--s));margin-left:calc(-2px * var(--s));font-size:calc(14px * var(--s))}
+html.tv .top .brand{font-size:calc(20px * var(--s))}
+html.tv .top .brand .logo{width:calc(34px * var(--s));height:calc(34px * var(--s))}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
