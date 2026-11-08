@@ -222,6 +222,48 @@ button,.card,.surf,.seek,.chip{touch-action:manipulation}
  .pwrap{max-height:78svh}
  @media(max-width:720px){.hero{min-height:clamp(340px,58svh,500px)}}
 }
+@media(min-width:721px) and (max-width:1366px){
+ :root{--cw:158px}
+ .top,.hcont{padding-left:max(28px,env(safe-area-inset-left,0px));padding-right:max(28px,env(safe-area-inset-right,0px))}
+ #view,.hwrap{padding-left:max(28px,env(safe-area-inset-left,0px));padding-right:max(28px,env(safe-area-inset-right,0px))}
+ #view.home{padding-left:0;padding-right:0}
+ .hero{min-height:clamp(340px,44vh,520px)}
+ .hinfo h1{font-size:clamp(28px,3.4vw,38px)}
+}
+@media(hover:none) and (pointer:coarse) and (min-width:721px){
+ body{font-size:16px}
+ input,select{font-size:16px}
+ .btn,.chip{min-height:44px}.btn.sm{min-height:34px}
+ .prow button{width:46px;height:46px}.seek{height:32px}
+ nav button{min-height:58px;min-width:88px;font-size:12.5px}
+ .epb{padding:12px 6px}
+}
+@media(min-width:900px){
+ #view.watch{display:grid;grid-template-columns:minmax(0,1fr) 340px;column-gap:24px;align-items:start;grid-template-areas:"back back" "player eps" "ttl eps" "tgs eps" "syn syn"}
+ #view.watch>p:first-child{grid-area:back}
+ #view.watch>.pwrap{grid-area:player}
+ #view.watch>.ttl{grid-area:ttl}
+ #view.watch>.tgs{grid-area:tgs}
+ #view.watch>#epp{grid-area:eps;margin-bottom:0}
+ #view.watch>.syn{grid-area:syn}
+ #view.watch .epg{max-height:min(520px,54vh);grid-template-columns:repeat(auto-fill,minmax(72px,1fr))}
+}
+/* Thanh điều hướng: nhỏ gọn, cố định */
+aside{left:50%;right:auto;top:auto;width:auto;padding:5px;border-radius:22px;bottom:calc(8px + env(safe-area-inset-bottom,0px));transform:translateX(-50%)}
+nav{flex-direction:row;justify-content:center;gap:2px}
+nav button{flex:0 0 auto;min-width:60px;min-height:46px;padding:6px 8px;font-size:10.5px;gap:1px;border-radius:17px}
+nav button svg{width:20px;height:20px}
+main{padding-bottom:calc(88px + env(safe-area-inset-bottom,0px))}
+.ibar{bottom:calc(76px + env(safe-area-inset-bottom,0px))}
+@media(orientation:landscape){
+ aside{left:auto;right:calc(8px + env(safe-area-inset-right,0px));top:50%;bottom:auto;transform:translateY(-50%)}
+ nav{flex-direction:column}
+ nav button{min-width:0;width:54px;min-height:50px;padding:5px 2px;font-size:10px}
+ main{padding-bottom:calc(40px + env(safe-area-inset-bottom,0px))}
+ .top,.hcont{padding-right:calc(76px + env(safe-area-inset-right,0px))}
+ #view,.hwrap{padding-right:calc(76px + env(safe-area-inset-right,0px))}
+ .ibar{left:calc(50% - 34px);bottom:calc(14px + env(safe-area-inset-bottom,0px))}
+}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -584,6 +626,7 @@ async function openMovie(src,slug){
 function mountMovie(src,slug,d){
  const item={src,slug,name:d.name,origin:d.origin,year:d.year,ep:d.ep,thumb:d.thumb,quality:d.quality,lang:d.lang};
  const hasEp=d.servers.some(s=>s.eps.length);
+ view.className=hasEp?'watch':'';
  const tot=/^\d+$/.test(String(d.total))?d.total+' tập':d.total;
  const tags=[d.season&&['Phần '+d.season,1],d.ep&&[d.ep],tot&&['Tổng: '+tot],d.quality&&[d.quality],d.time&&[d.time],d.year&&[String(d.year)]].filter(Boolean);
  const dl=[['Thể loại',d.cats],['Quốc gia',d.country],['Đạo diễn',d.directors],['Diễn viên',d.actors.slice(0,12)]].filter(r=>r[1].length);
@@ -801,7 +844,7 @@ $('#ibtn').onclick=()=>{hideBar();installApp()};
 $('#ix').onclick=()=>{ls.set('rd_inst',1);hideBar()};
 $('#iok').onclick=()=>{$('#isheet').hidden=true};
 $('#isheet').onclick=e=>{if(e.target.id==='isheet')e.target.hidden=true};
-if(matchMedia('(max-width:720px)').matches)setTimeout(showBar,2500);
+if(matchMedia('(max-width:720px)').matches||isIOS())setTimeout(showBar,2500);
 if('serviceWorker' in navigator&&/^https?:/.test(location.protocol))navigator.serviceWorker.register('sw.js').catch(()=>{});
 
 function updateTopAva(){
