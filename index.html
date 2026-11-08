@@ -271,6 +271,68 @@ main{padding-bottom:calc(88px + env(safe-area-inset-bottom,0px))}
 @media(orientation:landscape){:root{--gr:calc(76px + env(safe-area-inset-right,0px))}}
 .hwrap{padding-left:var(--gl);padding-right:var(--gr)}
 .rail{margin-left:calc(-1 * var(--gl));margin-right:calc(-1 * var(--gr));padding-left:var(--gl);padding-right:var(--gr);scroll-padding-left:var(--gl)}
+/* ===== Chế độ TV: giao diện lớn, thanh bên trái, điều khiển bằng remote ===== */
+html.tv{--s:1.5;--safe:max(2.4vw,24px);--sw:calc(96px * var(--s));--cw:calc(150px * var(--s));
+ --gl:calc(var(--safe) + var(--sw) + 28px * var(--s));--gr:var(--safe)}
+html.tv body{font-size:calc(16px * var(--s))}
+html.tv aside{position:fixed;left:var(--safe);right:auto;top:0;bottom:0;margin:auto 0;width:var(--sw);height:-webkit-fit-content;height:fit-content;padding:calc(8px * var(--s));border-radius:calc(30px * var(--s));transform:translate3d(0,0,0)}
+html.tv nav{flex-direction:column;gap:calc(4px * var(--s))}
+html.tv nav button{width:100%;min-width:0;min-height:calc(68px * var(--s));padding:calc(8px * var(--s)) 0;font-size:calc(12px * var(--s));border-radius:calc(22px * var(--s));gap:calc(3px * var(--s));white-space:nowrap}
+html.tv nav button svg{width:calc(26px * var(--s));height:calc(26px * var(--s))}
+html.tv main{padding-bottom:calc(60px * var(--s))}
+html.tv .ibar{display:none!important}
+html.tv .top{padding:calc(16px * var(--s)) var(--gr) calc(12px * var(--s)) var(--gl)}
+html.tv .brand{font-size:calc(22px * var(--s))}
+html.tv .brand .logo{width:calc(34px * var(--s));height:calc(34px * var(--s))}
+html.tv .srch{height:calc(44px * var(--s))}
+html.tv .srch button{width:calc(42px * var(--s));height:calc(42px * var(--s))}
+html.tv .srch button svg{width:calc(20px * var(--s));height:calc(20px * var(--s))}
+html.tv .srch.open input{width:min(40vw,calc(420px * var(--s)));font-size:calc(16px * var(--s))}
+html.tv .avt{width:calc(44px * var(--s));height:calc(44px * var(--s));font-size:calc(18px * var(--s))}
+html.tv #view{max-width:none;margin:0;padding:calc(88px * var(--s)) var(--gr) 0 var(--gl)}
+html.tv #view.home{padding:0}
+html.tv #view.home.nohero{padding-top:calc(88px * var(--s))}
+html.tv .hwrap{max-width:none;margin:0;padding-left:var(--gl);padding-right:var(--gr)}
+html.tv .hcont{max-width:none;margin:0;padding:0 var(--gr) calc(30px * var(--s)) var(--gl)}
+html.tv .hero{min-height:64vh}
+html.tv .hinfo h1{font-size:calc(34px * var(--s))}
+html.tv .hinfo small{font-size:calc(15px * var(--s))}
+html.tv .play{width:calc(60px * var(--s));height:calc(60px * var(--s))}
+html.tv .play svg{width:calc(26px * var(--s));height:calc(26px * var(--s))}
+html.tv .dot{width:calc(10px * var(--s));height:calc(10px * var(--s))}
+html.tv .dot.on{width:calc(28px * var(--s))}
+html.tv h2{font-size:calc(24px * var(--s))}
+html.tv .rh h2{font-size:calc(22px * var(--s))}
+html.tv .rail{gap:calc(16px * var(--s));padding-top:calc(14px * var(--s));padding-bottom:calc(26px * var(--s));margin-top:calc(-14px * var(--s))}
+html.tv .rail .card{flex:0 0 var(--cw)}
+html.tv .grid{gap:calc(22px * var(--s)) calc(18px * var(--s));padding-top:calc(10px * var(--s))}
+html.tv .card b{font-size:calc(14px * var(--s))}
+html.tv .card small{font-size:calc(12px * var(--s))}
+html.tv .bd{font-size:calc(11px * var(--s))}
+html.tv .btn,html.tv .chip{font-size:calc(15px * var(--s));padding:calc(8px * var(--s)) calc(20px * var(--s));min-height:calc(42px * var(--s))}
+html.tv .btn.sm{font-size:calc(13px * var(--s));min-height:calc(34px * var(--s))}
+html.tv .tg{font-size:calc(13px * var(--s))}
+html.tv .ttl h1{font-size:calc(30px * var(--s))}
+html.tv .epb{font-size:calc(14px * var(--s));padding:calc(10px * var(--s)) 6px}
+html.tv .epg{grid-template-columns:repeat(auto-fill,minmax(calc(76px * var(--s)),1fr));max-height:calc(300px * var(--s))}
+html.tv #view.watch{display:grid;grid-template-columns:minmax(0,1fr) calc(340px * var(--s));column-gap:calc(24px * var(--s));align-items:start;grid-template-areas:"back back" "player eps" "ttl eps" "tgs eps" "syn syn"}
+html.tv .prow button{width:calc(46px * var(--s));height:calc(46px * var(--s))}
+html.tv .ic{width:calc(24px * var(--s));height:calc(24px * var(--s))}
+html.tv .time{font-size:calc(13px * var(--s))}
+html.tv .seek{height:calc(26px * var(--s))}
+html.tv .bigplay{width:calc(76px * var(--s));height:calc(76px * var(--s))}
+html.tv .ptop{font-size:calc(16px * var(--s))}
+html.tv .syn img{width:calc(160px * var(--s))}
+html.tv .dl{font-size:calc(14px * var(--s))}
+html.tv .panel{padding:calc(18px * var(--s)) calc(20px * var(--s))}
+html.tv :focus{outline:none}
+html.tv button:focus,html.tv input:focus,html.tv .pwrap:focus{outline:calc(3px * var(--s)) solid #fff;outline-offset:calc(3px * var(--s))}
+html.tv .card:focus .im{transform:scale(1.07);border-color:#fff;box-shadow:0 14px 40px rgba(0,0,0,.75)}
+html.tv .card:focus b{color:var(--ac)}
+html.tv .chip:focus,html.tv .btn:focus,html.tv .epb:focus,html.tv nav button:focus{background:#fff;color:#000;border-color:#fff}
+html.tv .btn.pri:focus,html.tv .chip.on:focus,html.tv .epb.on:focus{background:var(--ac);color:#241705;border-color:#fff}
+html.tv .play:focus{transform:scale(1.12)}
+html.tv .prow button:focus{background:rgba(255,255,255,.3)}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -498,7 +560,7 @@ async function render(){
 
 function renderMe(note){
  updateTopAva();
- const fav=store.get('fav'), his=store.get('his'), list=st.tab==='fav'?fav:his, ava=getAva();
+ const tvf=a=>tvOn()?a.filter(x=>x.src==='kk'):a,fav=tvf(store.get('fav')), his=tvf(store.get('his')), list=st.tab==='fav'?fav:his, ava=getAva();
  const reg=st.auth==='reg';
  view.innerHTML=`<h2>Cá nhân</h2>
  <section class="panel prof">
@@ -514,8 +576,9 @@ function renderMe(note){
   ${reg?'<input class="f" id="pw2" type="password" placeholder="Nhập lại mật khẩu" autocomplete="new-password" required>':''}
   <div class="err" id="err"></div><button class="btn pri" type="submit">${reg?'Tạo tài khoản':'Đăng nhập'}</button></form>
   <p class="hint">Tài khoản được lưu ngay trên trình duyệt này. Phim yêu thích và lịch sử hiện tại sẽ được chuyển vào tài khoản khi đăng ký.</p></section>`}
+ <section class="panel"><h3>Chế độ TV</h3><p class="hint" style="margin:0 0 4px">Giao diện lớn, thanh bên ở bên trái, điều khiển bằng phím mũi tên và nút OK của remote.</p><div class="row"><button class="btn ${tvOn()?'pri':''}" id="tvb">${tvOn()?'Đang bật · Bấm để tắt':'Bật chế độ TV'}</button></div></section>
  <section class="panel"><h3>Ứng dụng</h3>${standalone()?'<p class="hint" style="margin:0">Bạn đang dùng FlixFlim như một ứng dụng.</p>':`<p class="hint" style="margin:0 0 4px">Thêm FlixFlim vào màn hình chính để mở nhanh như một ứng dụng.</p><div class="row"><button class="btn pri" id="inst2">Thêm vào màn hình chính</button></div>`}</section>
- <section class="panel"><h3>Nguồn phim</h3><div class="chips">${Object.keys(SRC).map(k=>`<button class="chip ${k===cur?'on':''}" data-src="${k}">${SRC[k].n}</button>`).join('')}</div></section>
+ ${tvOn()?'':`<section class="panel"><h3>Nguồn phim</h3><div class="chips">${Object.keys(SRC).map(k=>`<button class="chip ${k===cur?'on':''}" data-src="${k}">${SRC[k].n}</button>`).join('')}</div></section>`}
  <section class="panel"><h3>Sao lưu</h3><p class="hint" style="margin:0 0 4px">Tải file sao lưu để chuyển dữ liệu sang thiết bị hoặc trình duyệt khác.</p>
   <div class="row"><button class="btn" id="exp">Tải bản sao lưu</button><button class="btn" id="imp">Khôi phục từ file</button></div>
   <input type="file" id="impf" accept="application/json,.json" hidden></section>
@@ -553,6 +616,7 @@ function renderMe(note){
  };
  view.querySelectorAll('[data-src]').forEach(b=>b.onclick=()=>{cur=b.dataset.src;ls.set('rd_src',cur);renderMe('Đã chuyển nguồn phim sang '+SRC[cur].n+'.')});
  const i2=$('#inst2'); if(i2)i2.onclick=installApp;
+ $('#tvb').onclick=()=>{setTV(!tvOn());renderMe()};
  $('#exp').onclick=()=>{
   const data={app:'rap-dem',user,avatar:getAva()||null,fav:store.get('fav'),his:store.get('his'),at:new Date().toISOString()};
   const a=document.createElement('a');
@@ -800,8 +864,13 @@ function mountMovie(src,slug,d){
  document.onfullscreenchange=document.onwebkitfullscreenchange=()=>{$('#b-fs').innerHTML=ic(fsEl()?'xfs':'fs')};
  document.onkeydown=e=>{
   if(!pw.isConnected||pw.classList.contains('emb')||/INPUT|TEXTAREA|SELECT/.test(e.target.tagName))return;
-  const k=e.key;
-  if(k===' '&&e.target.tagName!=='BUTTON')toggle();
+  const k=e.key,kc=e.keyCode,tvK=document.documentElement.classList.contains('tv');
+  if(tvK&&(k==='ArrowLeft'||k==='ArrowRight')&&e.target!==pw)return;
+  if(tvK&&k==='Enter'&&e.target===pw)toggle();
+  else if(k==='MediaPlayPause'||k==='MediaPlay'||k==='MediaPause'||kc===415||kc===19||kc===10252)toggle();
+  else if(k==='MediaFastForward'||kc===417)seekBy(10);
+  else if(k==='MediaRewind'||kc===412)seekBy(-10);
+  else if(k===' '&&e.target.tagName!=='BUTTON')toggle();
   else if(k==='k')toggle();
   else if(k==='ArrowRight')seekBy(10);
   else if(k==='ArrowLeft')seekBy(-10);
@@ -813,6 +882,7 @@ function mountMovie(src,slug,d){
  };
  $('#b-fs').innerHTML=ic('fs');syncMute();
  drawEps();load(t0);
+ if(document.documentElement.classList.contains('tv'))pw.focus({preventScroll:true});
 
  // các phần khác của phim
  const base=(d.name||'').replace(/\s*[\(\[]?\s*(?:phần|season|mùa|ss)\s*\d+\s*[\)\]]?\s*$/i,'').trim();
@@ -841,6 +911,73 @@ $('#sbtn').onclick=()=>{
 };
 qi.addEventListener('keydown',e=>{if(e.key==='Escape'){qi.value='';sr.classList.remove('open');qi.blur()}});
 qi.addEventListener('blur',()=>{if(!qi.value.trim())setTimeout(()=>sr.classList.remove('open'),150)});
+/* ===== Chế độ TV ===== */
+const rootEl=document.documentElement;
+const tvOn=()=>rootEl.classList.contains('tv');
+const tvAuto=()=>{
+ if(/[?&]tv=0/.test(location.search))return false;
+ if(/[?&]tv=1/.test(location.search))return true;
+ const f=ls.get('rd_tv',0);
+ if(f===1)return true; if(f===2)return false;
+ return /smart-?tv|tizen|web0s|webos|netcast|bravia|hbbtv|vidaa|\baft[a-z]|android tv|googletv|crkey|appletv|roku|philipstv|hisense|viera|large screen/i.test(navigator.userAgent);
+};
+const setScale=()=>rootEl.style.setProperty('--s',Math.max(1,Math.min(2.2,innerWidth/1280)).toFixed(2));
+function setTV(on){
+ ls.set('rd_tv',on?1:2);
+ rootEl.classList.toggle('tv',on);
+ cur=on?'kk':ls.get('rd_src','kk');if(!SRC[cur])cur='kk';
+ if(on){setScale();setTimeout(focusFirst,200)}else document.activeElement&&document.activeElement.blur();
+}
+function focusFirst(){
+ const t=$('#pw')||$('#hgo')||view.querySelector('.card,.chip,.btn,.epb')||document.querySelector('nav button');
+ if(t)t.focus({preventScroll:true});
+}
+const FSEL='button:not([disabled]),input,select,a[href]';
+const visible=el=>{const r=el.getBoundingClientRect();return r.width>0&&r.height>0&&!el.closest('[hidden]')};
+function moveFocus(dir){
+ const cur=document.activeElement&&document.activeElement!==document.body?document.activeElement:null;
+ const els=[...document.querySelectorAll(FSEL)].filter(visible);
+ if(!cur||!els.includes(cur)&&cur.id!=='pw'){focusFirst();return}
+ const c=cur.getBoundingClientRect(),cx=c.left+c.width/2,cy=c.top+c.height/2;
+ let best=null,bs=1e9;
+ for(const el of els){
+  if(el===cur)continue;
+  const r=el.getBoundingClientRect(),dx=r.left+r.width/2-cx,dy=r.top+r.height/2-cy;
+  let ok,sc;
+  if(dir==='ArrowRight'){ok=dx>8;sc=Math.abs(dx)+2.5*Math.abs(dy)}
+  else if(dir==='ArrowLeft'){ok=dx<-8;sc=Math.abs(dx)+2.5*Math.abs(dy)}
+  else if(dir==='ArrowDown'){ok=dy>8;sc=Math.abs(dy)+2.5*Math.abs(dx)}
+  else{ok=dy<-8;sc=Math.abs(dy)+2.5*Math.abs(dx)}
+  if(ok&&sc<bs){bs=sc;best=el}
+ }
+ if(best){best.focus({preventScroll:true});best.scrollIntoView({block:'center',inline:'center',behavior:'smooth'})}
+}
+function goBack(e){
+ const fs=document.fullscreenElement||document.webkitFullscreenElement;
+ if(fs){(document.exitFullscreen||document.webkitExitFullscreen).call(document);e.preventDefault();return}
+ const b=$('#back')||$('#bk');
+ if(b){b.click();e.preventDefault();return}
+ if(st.v!=='home'){st={...st,v:'home',g:null,p:1,from:null};render();e.preventDefault()}
+}
+document.addEventListener('keydown',e=>{
+ if(!tvOn())return;
+ const k=e.key,kc=e.keyCode,inInp=/INPUT|TEXTAREA|SELECT/.test(e.target.tagName),pw=$('#pw'),onPw=pw&&document.activeElement===pw;
+ if(k==='ArrowUp'||k==='ArrowDown'||k==='ArrowLeft'||k==='ArrowRight'){
+  if(inInp&&(k==='ArrowLeft'||k==='ArrowRight'))return;
+  if(onPw&&(k==='ArrowLeft'||k==='ArrowRight'))return;
+  if(onPw&&k==='ArrowDown'){const b=$('#b-play');if(b){b.focus();pw.classList.remove('idle');e.preventDefault();e.stopPropagation();return}}
+  e.preventDefault();e.stopPropagation();moveFocus(k);
+ }else if(!inInp&&(k==='Backspace'||k==='Escape'||kc===10009||kc===461||k==='XF86Back'||k==='BrowserBack'))goBack(e);
+},true);
+let moT;
+new MutationObserver(()=>{clearTimeout(moT);moT=setTimeout(()=>{
+ if(!tvOn())return;
+ const a=document.activeElement;
+ if(!a||a===document.body||!document.contains(a))focusFirst();
+},300)}).observe(view,{childList:true});
+addEventListener('resize',()=>{if(tvOn())setScale()});
+if(tvAuto()){rootEl.classList.add('tv');setScale();cur='kk'}
+
 let dip=null;
 const standalone=()=>matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
 const isIOS=()=>/iphone|ipad|ipod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
