@@ -351,7 +351,7 @@ function cards(list,cls){
  if(!list.length)return '<p class="msg">Không có phim nào để hiển thị.</p>';
  return '<div class="'+(cls||'grid')+'">'+list.map((m,i)=>`
  <button class="card" data-i="${i}">
-  <div class="im" style="background-image:url('${esc(m.thumb)}')">${m.quality||m.lang?`<span class="bds">${m.quality?`<span class="bd o">${esc(m.quality)}</span>`:''}${m.lang?`<span class="bd w">${esc(m.lang)}</span>`:''}</span>`:''}${m.ep?`<span class="bd o ep">${esc(m.ep)}</span>`:''}</div>
+  <div class="im" style="background-image:url('${esc(m.thumb)}')">${m.quality?`<span class="bds"><span class="bd o">${esc(m.quality)}</span></span>`:''}${m.ep?`<span class="bd o ep">${esc(m.ep)}</span>`:''}</div>
   <b>${esc(m.name)}</b><small>${esc(m.origin)}${m.year?' • '+esc(m.year):''}</small>
  </button>`).join('')+'</div>';
 }
@@ -585,7 +585,7 @@ function mountMovie(src,slug,d){
  const item={src,slug,name:d.name,origin:d.origin,year:d.year,ep:d.ep,thumb:d.thumb,quality:d.quality,lang:d.lang};
  const hasEp=d.servers.some(s=>s.eps.length);
  const tot=/^\d+$/.test(String(d.total))?d.total+' tập':d.total;
- const tags=[d.season&&['Phần '+d.season,1],d.ep&&[d.ep],tot&&['Tổng: '+tot],d.quality&&[d.quality],d.lang&&[d.lang],d.time&&[d.time],d.year&&[String(d.year)]].filter(Boolean);
+ const tags=[d.season&&['Phần '+d.season,1],d.ep&&[d.ep],tot&&['Tổng: '+tot],d.quality&&[d.quality],d.time&&[d.time],d.year&&[String(d.year)]].filter(Boolean);
  const dl=[['Thể loại',d.cats],['Quốc gia',d.country],['Đạo diễn',d.directors],['Diễn viên',d.actors.slice(0,12)]].filter(r=>r[1].length);
  view.innerHTML=`<p style="margin-bottom:14px"><button class="btn" id="back">← Quay lại</button></p>
  ${hasEp?`<div class="pwrap paused" id="pw" tabindex="0">
