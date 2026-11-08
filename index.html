@@ -382,6 +382,24 @@ html.tv .top .brand{font-size:calc(20px * var(--s))}
 html.tv .top .brand .logo{width:calc(34px * var(--s));height:calc(34px * var(--s))}
 .pwrap.pfs{position:fixed;left:0;top:0;right:0;bottom:0;width:100vw;height:100vh;max-height:none;aspect-ratio:auto;margin:0;border:0;border-radius:0;z-index:60}
 body.nosc{overflow:hidden}
+.pwrap.tvhold{display:none!important}
+.tvact{display:none}
+#b-eps{display:none!important}
+.lbl{display:none}
+.epick{position:absolute;right:0;top:0;bottom:0;width:min(420px,92%);z-index:6;padding:20px;overflow-y:auto;background:rgba(0,0,0,.92);border-left:1px solid var(--line)}
+.epick .epg{max-height:none}
+html.tv .tvact{display:flex;gap:calc(16px * var(--s));margin:0 0 calc(22px * var(--s))}
+html.tv .tvact .btn{display:inline-flex;align-items:center;gap:calc(10px * var(--s));font-size:calc(17px * var(--s));font-weight:600;padding:calc(10px * var(--s)) calc(26px * var(--s));min-height:calc(48px * var(--s))}
+html.tv .tvact .btn svg{width:calc(22px * var(--s));height:calc(22px * var(--s))}
+html.tv #view.watch{grid-template-areas:"back back" "ttl eps" "tgs eps" "act eps" "syn eps"}
+html.tv #view.watch>.tvact{grid-area:act}
+html.tv #view.watch>.syn{grid-area:syn}
+html.tv #view.watch .epg{max-height:calc(420px * var(--s))}
+html.tv #b-eps{display:flex!important}
+html.tv .lbl{display:inline;font-style:normal;font-size:calc(14px * var(--s));font-weight:600;white-space:nowrap}
+html.tv #b-next,html.tv #b-eps{width:auto;align-items:center;gap:calc(6px * var(--s));padding:0 calc(14px * var(--s));border-radius:calc(24px * var(--s))}
+html.tv .epick{width:calc(400px * var(--s));padding:calc(22px * var(--s))}
+html.tv #b-next{display:flex}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -724,6 +742,7 @@ const IC={
  vol:'<path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/>',
  mute:'<path d="M11 5 6 9H2v6h4l5 4z"/><path d="m22 9-6 6M16 9l6 6"/>',
  pip:'<rect x="2" y="4" width="20" height="16" rx="2"/><rect x="12" y="12" width="8" height="6" rx="1" fill="currentColor"/>',
+ list:'<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
  fs:'<path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/>',
  xfs:'<path d="M8 3v3a2 2 0 0 1-2 2H3M21 8h-3a2 2 0 0 1-2-2V3M3 16h3a2 2 0 0 1 2 2v3M16 21v-3a2 2 0 0 1 2-2h3"/>'
 };
@@ -749,8 +768,9 @@ function mountMovie(src,slug,d){
  const item={src,slug,name:d.name,origin:d.origin,year:d.year,ep:d.ep,thumb:d.thumb,quality:d.quality,lang:d.lang};
  const hasEp=d.servers.some(s=>s.eps.length);
  view.className=hasEp?'watch':'';
+ const n0=(d.servers.find(s=>s.eps.length)||{eps:[]}).eps.length;
  const tot=/^\d+$/.test(String(d.total))?d.total+' tập':d.total;
- const tags=[d.season&&['Phần '+d.season,1],d.ep&&[d.ep],tot&&['Tổng: '+tot],d.quality&&[d.quality],d.time&&[d.time],d.year&&[String(d.year)]].filter(Boolean);
+ const tags=[d.season&&['Phần '+d.season,1],d.ep&&[d.ep],n0>1&&['Có '+n0+' tập'],tot&&['Tổng: '+tot],d.quality&&[d.quality],d.time&&[d.time],d.year&&[String(d.year)]].filter(Boolean);
  const dl=[['Thể loại',d.cats],['Quốc gia',d.country],['Đạo diễn',d.directors],['Diễn viên',d.actors.slice(0,12)]].filter(r=>r[1].length);
  view.innerHTML=`<p style="margin-bottom:14px"><button class="btn" id="back">← Quay lại</button></p>
  ${hasEp?`<div class="pwrap paused" id="pw" tabindex="0">
@@ -763,18 +783,21 @@ function mountMovie(src,slug,d){
      <button id="b-play" aria-label="Phát / Tạm dừng"></button>
      <button id="b-back" aria-label="Tua lại 10 giây">${ic('b10')}</button>
      <button id="b-fwd" aria-label="Tua tới 10 giây">${ic('f10')}</button>
-     <button id="b-next" aria-label="Tập tiếp theo">${ic('next')}</button>
+     <button id="b-next" aria-label="Tập tiếp theo">${ic('next')}<em class="lbl">Tập tiếp</em></button>
+     <button id="b-eps" aria-label="Chọn tập">${ic('list')}<em class="lbl">Chọn tập</em></button>
      <span class="time" id="tm">0:00 / 0:00</span><span class="sp"></span>
      <button id="b-mute" aria-label="Bật / tắt tiếng"></button>
      <button id="b-pip" aria-label="Hình trong hình">${ic('pip')}</button>
      <button id="b-fs" aria-label="Toàn màn hình"></button>
     </div></div></div>
   <div class="spin"></div><div class="ptoast" id="pt"></div>
+  <div class="epick" id="epick" hidden></div>
   <div class="nextbox" id="nb" hidden><b id="nbt"></b><div style="display:flex;gap:8px"><button class="btn pri" id="nbgo">Phát ngay</button><button class="btn" id="nbx">Hủy</button></div></div>
  </div>`:'<p class="msg">Phim chưa có tập nào.</p>'}
  <div class="ttl"><div><h1>${esc(d.name)}</h1><small id="nowp">${esc(d.origin)}</small></div>
   <div style="display:flex;gap:8px;flex-wrap:wrap">${hasEp?'<button class="btn" id="mode"></button>':''}<button class="btn" id="fav"></button></div></div>
  <div class="tgs">${tags.map(t=>`<span class="tg${t[1]?' hl':''}">${esc(t[0])}</span>`).join('')}</div>
+ ${hasEp?'<div class="tvact"><button class="btn pri" id="tvplay"></button><button class="btn" id="tveps">Chọn tập</button></div>':''}
  ${hasEp?'<section class="panel" id="epp"></section>':''}
  <section class="panel syn">${d.thumb?`<img src="${esc(d.thumb)}" alt="">`:''}<div class="sb"><h3>Nội dung phim</h3>
   <p class="txt clamp" id="syn">${esc(d.content||'Chưa có nội dung cho phim này.')}</p>
@@ -788,19 +811,19 @@ function mountMovie(src,slug,d){
  const more=$('#more'); if(more)more.onclick=()=>{const c=$('#syn').classList.toggle('clamp');more.textContent=c?'Xem thêm':'Thu gọn'};
  if(!hasEp)return;
 
- const pw=$('#pw'),v=$('#vid'),ifr=$('#ifr'),epp=$('#epp'),nb=$('#nb');
+ const pw=$('#pw'),v=$('#vid'),ifr=$('#ifr'),epp=$('#epp'),nb=$('#nb'),ep2=$('#epick');
  const posKey='pos:'+src+':'+slug;
- let si=0,ei=0,hls=null,mode='auto',partsHtml='',tT,nI,tI,lastSave=0;
+ let si=0,ei=0,hls=null,mode='auto',partsHtml='',tT,nI,tI,lastSave=0,started=false;
  const saved=ls.get(posKey,null);
  let t0=0;
  if(saved&&d.servers[saved.si]&&d.servers[saved.si].eps[saved.ei]){si=saved.si;ei=saved.ei;t0=saved.t||0}
  else si=Math.max(0,d.servers.findIndex(s=>s.eps.length));
  const eps=()=>d.servers[si].eps;
  const toast=(m,ms=1400)=>{const el=$('#pt');el.textContent=m;el.classList.add('show');clearTimeout(tT);tT=setTimeout(()=>el.classList.remove('show'),ms)};
- const poke=()=>{pw.classList.remove('idle');clearTimeout(tI);if(!v.paused&&!pw.classList.contains('emb'))tI=setTimeout(()=>pw.classList.add('idle'),3000)};
+ const poke=()=>{pw.classList.remove('idle');clearTimeout(tI);if(!v.paused&&!pw.classList.contains('emb')&&ep2.hidden)tI=setTimeout(()=>pw.classList.add('idle'),3000)};
  const syncPlay=()=>{const p=v.paused;pw.classList.toggle('paused',p);$('#b-play').innerHTML=ic(p?'play':'pause');$('#bp').innerHTML=ic('play');poke()};
  const syncMute=()=>{$('#b-mute').innerHTML=ic(v.muted||v.volume===0?'mute':'vol')};
- const toggle=()=>{v.paused?tryPlay():v.pause()};
+ const toggle=()=>{if(!started){startPlay();return}v.paused?tryPlay():v.pause()};
  const tryPlay=()=>{const p=v.play();if(p&&p.catch)p.catch(()=>{v.muted=true;syncMute();v.play().catch(()=>{});toast('Đang tắt tiếng. Bấm biểu tượng loa để bật.',2600)})};
  const seekBy=s=>{if(!v.duration)return;v.currentTime=Math.max(0,Math.min(v.duration,v.currentTime+s));toast((s>0?'+':'−')+Math.abs(s)+' giây',700);poke()};
  const fsEl=()=>document.fullscreenElement||document.webkitFullscreenElement;
@@ -810,6 +833,11 @@ function mountMovie(src,slug,d){
   pw.classList.remove('pfs');document.body.classList.remove('nosc');
   if(fsEl())(document.exitFullscreen||document.webkitExitFullscreen).call(document);
   $('#b-fs').innerHTML=ic('fs');
+  if(TVm()&&started){
+   pw.classList.add('tvhold');v.pause();cancelNext();ep2.hidden=true;
+   if(pw.classList.contains('emb')){ifr.src='about:blank';started=false;t0=0}
+   setPlayLabel();const b=$('#tvplay');if(b)b.focus({preventScroll:true});
+  }
  };
  const enterFs=()=>{
   if(TVm()){pw.classList.add('pfs');document.body.classList.add('nosc');$('#b-fs').innerHTML=ic('xfs')}
@@ -882,15 +910,40 @@ function mountMovie(src,slug,d){
   if(a&&g)g.scrollTop=a.offsetTop-g.clientHeight/2+a.clientHeight/2;
   ls.set(posKey,{si,ei,t:start||0});
   store.set('his',[{...item,ep:lab(e.name)},...store.get('his').filter(x=>!(x.slug===slug&&x.src===src))].slice(0,60));
-  upd();syncPlay();
+  upd();syncPlay();setPlayLabel();
  }
 
+ function setPlayLabel(){
+  const b=$('#tvplay');if(!b)return;
+  const e=eps()[ei];
+  b.innerHTML=ic('play')+'<span>'+((started||saved)&&e?'Tiếp tục xem · '+esc(lab(e.name)):'Xem phim')+'</span>';
+ }
+ function play(t){
+  started=true;pw.classList.remove('tvhold');load(t);
+  if(TVm()){if(!isFull())enterFs();pw.focus({preventScroll:true})}
+ }
+ function startPlay(){
+  pw.classList.remove('tvhold');
+  if(!started){started=true;load(t0)}else tryPlay();
+  enterFs();pw.focus({preventScroll:true});
+ }
+ function hideEpick(){ep2.hidden=true;const b=$('#b-eps');if(b)b.focus({preventScroll:true})}
+ function openPicker(){
+  const list=eps();
+  ep2.innerHTML=`<div class="eh"><h3>Chọn tập</h3><span class="cnt">${list.length} tập</span></div>${d.servers.length>1?`<div class="tabs sv">${d.servers.map((s,i)=>`<button class="chip ${i===si?'on':''}" data-ps="${i}">${esc(s.name)}</button>`).join('')}</div>`:''}<div class="epg">${list.map((e,i)=>`<button class="epb ${i===ei?'on':''}" data-pe="${i}">${esc(lab(e.name))}</button>`).join('')}</div>`;
+  ep2.hidden=false;pw.classList.remove('idle');
+  ep2.querySelectorAll('[data-ps]').forEach(b=>b.onclick=()=>{si=+b.dataset.ps;ei=Math.min(ei,eps().length-1);drawEps();openPicker()});
+  ep2.querySelectorAll('[data-pe]').forEach(b=>b.onclick=()=>{ei=+b.dataset.pe;ep2.hidden=true;load(0);pw.focus({preventScroll:true})});
+  const c=ep2.querySelector('.epb.on')||ep2.querySelector('.epb');
+  if(c)c.focus({preventScroll:true});
+ }
+ window.__closePicker=hideEpick;
  function drawEps(){
   epp.innerHTML=`<div class="eh"><h3>Danh sách tập</h3><span class="cnt">${eps().length} tập${d.servers.length>1?' • '+d.servers.length+' máy chủ':''}</span></div>
   ${d.servers.length>1?`<div class="tabs sv">${d.servers.map((s,i)=>`<button class="chip ${i===si?'on':''}" data-s="${i}">${esc(s.name)}</button>`).join('')}</div>`:''}
   <div class="epg">${eps().map((e,i)=>`<button class="epb ${i===ei?'on':''}" data-e="${i}">${esc(lab(e.name))}</button>`).join('')}</div>${partsHtml}`;
-  epp.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{const t=v.currentTime||0;si=+b.dataset.s;ei=Math.min(ei,eps().length-1);drawEps();load(t)});
-  epp.querySelectorAll('[data-e]').forEach(b=>b.onclick=()=>{ei=+b.dataset.e;window.scrollTo({top:0,behavior:'smooth'});load(0);if(TVm()&&!isFull())enterFs()});
+  epp.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{const t=v.currentTime||0;si=+b.dataset.s;ei=Math.min(ei,eps().length-1);drawEps();if(started)load(t)});
+  epp.querySelectorAll('[data-e]').forEach(b=>b.onclick=()=>{ei=+b.dataset.e;window.scrollTo({top:0,behavior:'smooth'});play(0)});
   epp.querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>openMovie(src,b.dataset.p));
  }
 
@@ -898,10 +951,13 @@ function mountMovie(src,slug,d){
  $('#b-play').onclick=toggle;$('#bp').onclick=toggle;
  $('#b-back').onclick=()=>seekBy(-10);$('#b-fwd').onclick=()=>seekBy(10);
  $('#b-next').onclick=nextEp;
+ $('#b-eps').onclick=openPicker;
+ const tp=$('#tvplay');if(tp)tp.onclick=startPlay;
+ const te=$('#tveps');if(te)te.onclick=()=>{const c=epp.querySelector('.epb.on')||epp.querySelector('.epb');if(c){c.scrollIntoView({block:'center',behavior:'smooth'});c.focus({preventScroll:true})}};
  $('#b-mute').onclick=()=>{v.muted=!v.muted;if(!v.muted&&v.volume===0)v.volume=1};
  $('#b-pip').onclick=togglePip;$('#b-fs').onclick=toggleFs;
  $('#nbgo').onclick=nextEp;$('#nbx').onclick=cancelNext;
- $('#mode').onclick=()=>{mode=mode==='embed'?'auto':'embed';load(mode==='embed'?0:(v.currentTime||0))};
+ $('#mode').onclick=()=>{mode=mode==='embed'?'auto':'embed';if(started)load(mode==='embed'?0:(v.currentTime||0));else $('#mode').textContent='Trình phát: '+(mode==='embed'?'Embed':'Tùy chỉnh')};
  let ct=null;
  $('#surf').onclick=e=>{
   poke();
@@ -923,7 +979,7 @@ function mountMovie(src,slug,d){
  v.ontimeupdate=()=>{upd();const n=Date.now();if(n-lastSave>5000&&v.currentTime>5){lastSave=n;ls.set(posKey,{si,ei,t:Math.floor(v.currentTime)})}};
  v.onended=()=>{ls.set(posKey,{si,ei,t:0});ei<eps().length-1?showNext():toast('Bạn đã xem hết phim.',2400)};
  ['mousemove','touchstart','focusin'].forEach(ev=>pw.addEventListener(ev,poke,{passive:true}));
- document.onfullscreenchange=document.onwebkitfullscreenchange=()=>{if(!fsEl()){pw.classList.remove('pfs');document.body.classList.remove('nosc')}$('#b-fs').innerHTML=ic(isFull()?'xfs':'fs')};
+ document.onfullscreenchange=document.onwebkitfullscreenchange=()=>{if(!fsEl()&&pw.classList.contains('pfs'))exitFs();$('#b-fs').innerHTML=ic(isFull()?'xfs':'fs')};
  document.onkeydown=e=>{
   if(!pw.isConnected||pw.classList.contains('emb')||/INPUT|TEXTAREA|SELECT/.test(e.target.tagName))return;
   const k=e.key,kc=e.keyCode,tvK=document.documentElement.classList.contains('tv');
@@ -943,8 +999,9 @@ function mountMovie(src,slug,d){
   e.preventDefault();poke();
  };
  $('#b-fs').innerHTML=ic('fs');syncMute();
- drawEps();load(t0);
- if(TVm()){pw.focus({preventScroll:true});enterFs()}
+ drawEps();
+ if(TVm()){pw.classList.add('tvhold');setPlayLabel();setTimeout(()=>{const b=$('#tvplay');if(b)b.focus({preventScroll:true})},60)}
+ else{started=true;load(t0)}
 
  // các phần khác của phim
  const base=(d.name||'').replace(/\s*[\(\[]?\s*(?:phần|season|mùa|ss)\s*\d+\s*[\)\]]?\s*$/i,'').trim();
@@ -992,7 +1049,7 @@ function setTV(on){
  if(on){setScale();setTimeout(focusFirst,200)}else document.activeElement&&document.activeElement.blur();
 }
 function focusFirst(){
- const t=$('#pw')||$('#hgo')||view.querySelector('.card,.chip,.btn,.epb')||document.querySelector('nav button');
+ const t=$('#tvplay')||$('#hgo')||view.querySelector('.card,.chip,.btn,.epb')||document.querySelector('nav button');
  if(t)t.focus({preventScroll:true});
 }
 const FSEL='button:not([disabled]),input,select,a[href]';
@@ -1019,6 +1076,7 @@ function moveFocus(dir){
  if(best){best.focus({preventScroll:true});if(!pf)best.scrollIntoView({block:'center',inline:'center',behavior:'smooth'})}
 }
 function goBack(e){
+ if(window.__closePicker&&document.querySelector('.epick:not([hidden])')){window.__closePicker();e.preventDefault();return}
  if(window.__exitFs&&document.querySelector('.pwrap.pfs')){window.__exitFs();e.preventDefault();return}
  const fs=document.fullscreenElement||document.webkitFullscreenElement;
  if(fs){(document.exitFullscreen||document.webkitExitFullscreen).call(document);e.preventDefault();return}
