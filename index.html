@@ -380,6 +380,8 @@ html.tv aside:focus-within nav button em{max-width:calc(200px * var(--s))}
 html.tv .navava{width:calc(30px * var(--s));height:calc(30px * var(--s));margin-left:calc(-2px * var(--s));font-size:calc(14px * var(--s))}
 html.tv .top .brand{font-size:calc(20px * var(--s))}
 html.tv .top .brand .logo{width:calc(34px * var(--s));height:calc(34px * var(--s))}
+.pwrap.pfs{position:fixed;left:0;top:0;right:0;bottom:0;width:100vw;height:100vh;max-height:none;aspect-ratio:auto;margin:0;border:0;border-radius:0;z-index:60}
+body.nosc{overflow:hidden}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -575,7 +577,7 @@ function renderHome(){
 }
 
 async function render(){
- clearInterval(heroT);
+ clearInterval(heroT);document.body.classList.remove('nosc');
  document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===(st.v==='cat'?(st.from||'home'):st.v)));
  window.scrollTo(0,0);
  const S=SRC[cur];
@@ -732,7 +734,7 @@ const fmt=t=>{if(!isFinite(t)||t<0)t=0;t=Math.floor(t);const h=Math.floor(t/3600
 const lab=n=>/^\d+$/.test(String(n).trim())?'Tập '+n:String(n);
 
 async function openMovie(src,slug){
- clearInterval(heroT);view.className='';
+ clearInterval(heroT);view.className='';document.body.classList.remove('nosc');
  window.scrollTo(0,0);
  view.innerHTML='<p class="msg">Đang tải phim...</p>';
  try{
@@ -802,12 +804,23 @@ function mountMovie(src,slug,d){
  const tryPlay=()=>{const p=v.play();if(p&&p.catch)p.catch(()=>{v.muted=true;syncMute();v.play().catch(()=>{});toast('Đang tắt tiếng. Bấm biểu tượng loa để bật.',2600)})};
  const seekBy=s=>{if(!v.duration)return;v.currentTime=Math.max(0,Math.min(v.duration,v.currentTime+s));toast((s>0?'+':'−')+Math.abs(s)+' giây',700);poke()};
  const fsEl=()=>document.fullscreenElement||document.webkitFullscreenElement;
- const toggleFs=()=>{
+ const TVm=()=>document.documentElement.classList.contains('tv');
+ const isFull=()=>pw.classList.contains('pfs')||!!fsEl();
+ const exitFs=()=>{
+  pw.classList.remove('pfs');document.body.classList.remove('nosc');
   if(fsEl())(document.exitFullscreen||document.webkitExitFullscreen).call(document);
-  else if(pw.requestFullscreen)pw.requestFullscreen();
-  else if(pw.webkitRequestFullscreen)pw.webkitRequestFullscreen();
-  else if(v.webkitEnterFullscreen)v.webkitEnterFullscreen();
+  $('#b-fs').innerHTML=ic('fs');
  };
+ const enterFs=()=>{
+  if(TVm()){pw.classList.add('pfs');document.body.classList.add('nosc');$('#b-fs').innerHTML=ic('xfs')}
+  try{
+   const r=pw.requestFullscreen?pw.requestFullscreen():pw.webkitRequestFullscreen?pw.webkitRequestFullscreen():v.webkitEnterFullscreen?v.webkitEnterFullscreen():null;
+   if(r&&r.catch)r.catch(()=>{});
+  }catch(e){}
+  poke();
+ };
+ const toggleFs=()=>isFull()?exitFs():enterFs();
+ window.__exitFs=exitFs;
  const pipOK=document.pictureInPictureEnabled||!!v.webkitSetPresentationMode;
  $('#b-pip').hidden=!pipOK;
  const togglePip=()=>{
@@ -877,7 +890,7 @@ function mountMovie(src,slug,d){
   ${d.servers.length>1?`<div class="tabs sv">${d.servers.map((s,i)=>`<button class="chip ${i===si?'on':''}" data-s="${i}">${esc(s.name)}</button>`).join('')}</div>`:''}
   <div class="epg">${eps().map((e,i)=>`<button class="epb ${i===ei?'on':''}" data-e="${i}">${esc(lab(e.name))}</button>`).join('')}</div>${partsHtml}`;
   epp.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{const t=v.currentTime||0;si=+b.dataset.s;ei=Math.min(ei,eps().length-1);drawEps();load(t)});
-  epp.querySelectorAll('[data-e]').forEach(b=>b.onclick=()=>{ei=+b.dataset.e;window.scrollTo({top:0,behavior:'smooth'});load(0)});
+  epp.querySelectorAll('[data-e]').forEach(b=>b.onclick=()=>{ei=+b.dataset.e;window.scrollTo({top:0,behavior:'smooth'});load(0);if(TVm()&&!isFull())enterFs()});
   epp.querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>openMovie(src,b.dataset.p));
  }
 
@@ -910,7 +923,7 @@ function mountMovie(src,slug,d){
  v.ontimeupdate=()=>{upd();const n=Date.now();if(n-lastSave>5000&&v.currentTime>5){lastSave=n;ls.set(posKey,{si,ei,t:Math.floor(v.currentTime)})}};
  v.onended=()=>{ls.set(posKey,{si,ei,t:0});ei<eps().length-1?showNext():toast('Bạn đã xem hết phim.',2400)};
  ['mousemove','touchstart','focusin'].forEach(ev=>pw.addEventListener(ev,poke,{passive:true}));
- document.onfullscreenchange=document.onwebkitfullscreenchange=()=>{$('#b-fs').innerHTML=ic(fsEl()?'xfs':'fs')};
+ document.onfullscreenchange=document.onwebkitfullscreenchange=()=>{if(!fsEl()){pw.classList.remove('pfs');document.body.classList.remove('nosc')}$('#b-fs').innerHTML=ic(isFull()?'xfs':'fs')};
  document.onkeydown=e=>{
   if(!pw.isConnected||pw.classList.contains('emb')||/INPUT|TEXTAREA|SELECT/.test(e.target.tagName))return;
   const k=e.key,kc=e.keyCode,tvK=document.documentElement.classList.contains('tv');
@@ -931,7 +944,7 @@ function mountMovie(src,slug,d){
  };
  $('#b-fs').innerHTML=ic('fs');syncMute();
  drawEps();load(t0);
- if(document.documentElement.classList.contains('tv'))pw.focus({preventScroll:true});
+ if(TVm()){pw.focus({preventScroll:true});enterFs()}
 
  // các phần khác của phim
  const base=(d.name||'').replace(/\s*[\(\[]?\s*(?:phần|season|mùa|ss)\s*\d+\s*[\)\]]?\s*$/i,'').trim();
@@ -986,7 +999,9 @@ const FSEL='button:not([disabled]),input,select,a[href]';
 const visible=el=>{const r=el.getBoundingClientRect();return r.width>0&&r.height>0&&!el.closest('[hidden]')};
 function moveFocus(dir){
  const cur=document.activeElement&&document.activeElement!==document.body?document.activeElement:null;
- const els=[...document.querySelectorAll(FSEL)].filter(visible);
+ const pf=document.querySelector('.pwrap.pfs');
+ let els=[...document.querySelectorAll(FSEL)].filter(visible);
+ if(pf)els=els.filter(el=>pf.contains(el));
  if(!cur||!els.includes(cur)&&cur.id!=='pw'){focusFirst();return}
  const c=cur.getBoundingClientRect(),cx=c.left+c.width/2,cy=c.top+c.height/2;
  let best=null,bs=1e9;
@@ -1000,9 +1015,11 @@ function moveFocus(dir){
   else{ok=dy<-8;sc=Math.abs(dy)+2.5*Math.abs(dx)}
   if(ok&&sc<bs){bs=sc;best=el}
  }
- if(best){best.focus({preventScroll:true});best.scrollIntoView({block:'center',inline:'center',behavior:'smooth'})}
+ if(!best&&pf&&dir==='ArrowUp'){pf.focus({preventScroll:true});return}
+ if(best){best.focus({preventScroll:true});if(!pf)best.scrollIntoView({block:'center',inline:'center',behavior:'smooth'})}
 }
 function goBack(e){
+ if(window.__exitFs&&document.querySelector('.pwrap.pfs')){window.__exitFs();e.preventDefault();return}
  const fs=document.fullscreenElement||document.webkitFullscreenElement;
  if(fs){(document.exitFullscreen||document.webkitExitFullscreen).call(document);e.preventDefault();return}
  const b=$('#back')||$('#bk');
