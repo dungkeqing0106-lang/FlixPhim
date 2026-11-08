@@ -125,8 +125,8 @@ input.f{background:rgba(255,255,255,.07);border:1px solid var(--line);border-rad
 @media(max-width:720px){.hbg{background-image:var(--bgp)}.hero{min-height:clamp(340px,58vh,500px)}.hcont{padding:0 16px 18px}.play{width:50px;height:50px}}
 [hidden]{display:none!important}
 .pwrap{position:relative;aspect-ratio:16/9;max-height:78vh;width:100%;background:#000;border-radius:22px;overflow:hidden;border:1px solid var(--line);margin-bottom:16px;user-select:none;-webkit-user-select:none;outline:0}
-.pwrap:fullscreen{border-radius:0;max-height:none;border:0}
-.pwrap:-webkit-full-screen{border-radius:0;max-height:none;border:0}
+.pwrap:fullscreen,.pwrap:-webkit-full-screen{position:fixed!important;inset:0!important;width:100%!important;height:100%!important;max-height:none!important;aspect-ratio:auto!important;margin:0!important;border:0;border-radius:0;background:#000}
+.pwrap:fullscreen video,.pwrap:-webkit-full-screen video{object-fit:contain}
 .pwrap video,.pwrap iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:#000;object-fit:contain}
 .pwrap iframe{display:none}.pwrap.emb iframe{display:block}.pwrap.emb video,.pwrap.emb .pov{display:none}
 .pov{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:flex-end;transition:opacity .25s}
@@ -728,10 +728,18 @@ function mountMovie(src,slug,d){
    if(!e.m3u8&&mode!=='embed')toast('Tập này chỉ có bản Embed.',2400);
   }else{
    ifr.src='about:blank';
-   if(window.Hls&&Hls.isSupported()){
+   const apple=isIOS()||/^((?!chrome|android|crios|fxios).)*safari/i.test(navigator.userAgent);
+   const nativeHls=apple&&!!v.canPlayType('application/vnd.apple.mpegurl');
+   if(!nativeHls&&window.Hls&&Hls.isSupported()){
     hls=new Hls({startPosition:start>0?start:-1,maxBufferLength:40});
+    let netTry=0,medTry=0;
     hls.loadSource(e.m3u8);hls.attachMedia(v);
-    hls.on(Hls.Events.ERROR,(_,x)=>{if(x.fatal){toast('Không phát được M3U8, chuyển sang Embed.',2600);load(0,true)}});
+    hls.on(Hls.Events.ERROR,(_,x)=>{
+     if(!x.fatal)return;
+     if(x.type===Hls.ErrorTypes.NETWORK_ERROR&&netTry++<2)hls.startLoad();
+     else if(x.type===Hls.ErrorTypes.MEDIA_ERROR&&medTry++<2)hls.recoverMediaError();
+     else{toast('Không phát được M3U8, chuyển sang Embed.',2600);load(0,true)}
+    });
    }else{
     v.src=e.m3u8;
     if(start>0)v.addEventListener('loadedmetadata',()=>{v.currentTime=start},{once:true});
