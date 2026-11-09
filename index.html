@@ -1084,6 +1084,16 @@ function goBack(e){
  if(b){b.click();e.preventDefault();return}
  if(st.v!=='home'){st={...st,v:'home',g:null,p:1,from:null};render();e.preventDefault()}
 }
+window.tvBack=function(){
+ if(window.__closePicker&&document.querySelector('.epick:not([hidden])')){window.__closePicker();return true}
+ if(window.__exitFs&&document.querySelector('.pwrap.pfs')){window.__exitFs();return true}
+ const fs=document.fullscreenElement||document.webkitFullscreenElement;
+ if(fs){(document.exitFullscreen||document.webkitExitFullscreen).call(document);return true}
+ const b=$('#back')||$('#bk');
+ if(b){b.click();return true}
+ if(st.v!=='home'){st={...st,v:'home',g:null,p:1,from:null};render();return true}
+ return false;
+};
 document.addEventListener('keydown',e=>{
  if(!tvOn())return;
  const k=e.key,kc=e.keyCode,inInp=/INPUT|TEXTAREA|SELECT/.test(e.target.tagName),pw=$('#pw'),onPw=pw&&document.activeElement===pw;
@@ -1122,7 +1132,7 @@ $('#ix').onclick=()=>{ls.set('rd_inst',1);hideBar()};
 $('#iok').onclick=()=>{$('#isheet').hidden=true};
 $('#isheet').onclick=e=>{if(e.target.id==='isheet')e.target.hidden=true};
 if(matchMedia('(max-width:720px)').matches||isIOS())setTimeout(showBar,2500);
-if('serviceWorker' in navigator&&/^https?:/.test(location.protocol))navigator.serviceWorker.register('sw.js').catch(()=>{});
+if('serviceWorker' in navigator&&/^https?:/.test(location.protocol)&&!/FlixFlimTV/.test(navigator.userAgent))navigator.serviceWorker.register('sw.js').catch(()=>{});
 
 function updateTopAva(){
  const b=$('#avtb'), a=getAva();
