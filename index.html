@@ -408,6 +408,8 @@ html.tv .spin{animation:spn .8s linear infinite!important}
 html.tv .rail{scroll-snap-type:none;scroll-behavior:auto}
 html.tv .top.solid{background:rgba(0,0,0,.92)}
 html.tv .hero::after{background:linear-gradient(to top,var(--bg) 2%,rgba(0,0,0,.5) 30%,transparent 62%)}
+.pinfo b{font-size:20px}
+.nameform{margin-top:12px}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -495,7 +497,11 @@ const merge=(a,b)=>[...a,...b.filter(x=>!a.some(y=>y.slug===x.slug&&y.src===x.sr
 const CLOUD={url:'https://prntjihczhukzvlafmim.supabase.co',key:'sb_publishable_GAw2HR1QEypz_Mu1S5dzgA_zJ_ceOhL'};
 const cloudOn=()=>!!(CLOUD.url&&CLOUD.key);
 function isCloud(){return !!user&&user.startsWith('cloud:')&&cloudOn()}
-const dn=()=>user?(user.startsWith('cloud:')?user.slice(6):user):'Khách';
+const acct=()=>user?(user.startsWith('cloud:')?user.slice(6):user):'Khách';
+function getName(){return user?((users()[user]||{}).dname||''):ls.get('rd_dname','')}
+function setNameRaw(n){if(user){const u=users();u[user]=u[user]||{};u[user].dname=n;ls.set('rd_users',u)}else ls.set('rd_dname',n)}
+function setName(n){setNameRaw(n);markDirty()}
+const dn=()=>getName()||acct();
 const viMsg=m=>/invalid login/i.test(m)?'Sai email hoặc mật khẩu.':/already (been )?registered/i.test(m)?'Email này đã được đăng ký.':/not confirmed/i.test(m)?'Email chưa được xác nhận. Hãy kiểm tra hộp thư.':/rate limit/i.test(m)?'Thao tác quá nhanh, hãy thử lại sau ít phút.':(m||'Không thực hiện được.');
 async function cloudAuth(kind,email,pw){
  const r=await fetch(CLOUD.url+(kind==='signup'?'/auth/v1/signup':'/auth/v1/token?grant_type=password'),{method:'POST',headers:{apikey:CLOUD.key,'Content-Type':'application/json'},body:JSON.stringify({email,password:pw})});
@@ -522,7 +528,7 @@ async function rest(method,path,body,extra){
  if(!r.ok)throw new Error('Máy chủ trả về lỗi '+r.status);
  return method==='GET'?r.json():null;
 }
-const snapshot=()=>({fav:store.get('fav'),his:store.get('his'),avatar:getAva()||null});
+const snapshot=()=>({fav:store.get('fav'),his:store.get('his'),avatar:getAva()||null,name:getName()});
 let pushT;
 function markDirty(){
  if(!isCloud())return;
@@ -546,11 +552,12 @@ async function syncPull(){
  const d=r.data,rf=Array.isArray(d.fav)?d.fav:[],rh=Array.isArray(d.his)?d.his:[];
  if(!dirty&&last&&new Date(r.updated_at)<=new Date(last))return;
  if(!dirty&&last){
-  ls.set(K('fav'),rf);ls.set(K('his'),rh);if(d.avatar)setAvaRaw(d.avatar);
+  ls.set(K('fav'),rf);ls.set(K('his'),rh);if(d.avatar)setAvaRaw(d.avatar);if(typeof d.name==='string'&&d.name)setNameRaw(d.name);
   ls.set('rd_sync:'+user,r.updated_at);
  }else{
   ls.set(K('fav'),merge(store.get('fav'),rf));ls.set(K('his'),merge(store.get('his'),rh));
   if(d.avatar&&!getAva())setAvaRaw(d.avatar);
+  if(typeof d.name==='string'&&d.name&&!getName())setNameRaw(d.name);
   await syncPush();
  }
 }
@@ -713,15 +720,16 @@ function renderMe(note){
  view.innerHTML=`<h2>Cá nhân</h2>
  <section class="panel prof">
   <button class="ava" id="ava" aria-label="Đổi ảnh đại diện">${ava?`<img src="${esc(ava)}" alt="">`:esc(dn()[0].toUpperCase())}</button>
-  <div class="pinfo"><b>${esc(dn())}</b><br><small>${user?(isCloud()?'Đã bật sao lưu đám mây. Đăng nhập ở thiết bị khác để lấy lại dữ liệu.':'Dữ liệu đang lưu theo tài khoản này.'):(cloudOn()?'Đăng nhập để sao lưu phim yêu thích và lịch sử lên đám mây.':'Đăng nhập để lưu riêng và sao lưu dữ liệu.')}</small>
-   <div class="row"><button class="btn" id="chava">Đổi ảnh đại diện</button>${ava?'<button class="btn" id="rmava">Xóa ảnh</button>':''}${user?'<button class="btn" id="out">Đăng xuất</button>':''}</div></div>
+  <div class="pinfo"><b>${esc(dn())}</b><br><small>${getName()&&user?esc(acct())+' · ':''}${user?(isCloud()?'Đã bật sao lưu đám mây. Đăng nhập ở thiết bị khác để lấy lại dữ liệu.':'Dữ liệu đang lưu theo tài khoản này.'):(cloudOn()?'Đăng nhập để sao lưu phim yêu thích và lịch sử lên đám mây.':'Đăng nhập để lưu riêng và sao lưu dữ liệu.')}</small>
+   <div class="row"><button class="btn" id="chname">Đổi tên hiển thị</button><button class="btn" id="chava">Đổi ảnh đại diện</button>${ava?'<button class="btn" id="rmava">Xóa ảnh</button>':''}${user?'<button class="btn" id="out">Đăng xuất</button>':''}</div>
+   <form class="authf nameform" id="nf" hidden><input class="f" id="nin" maxlength="24" placeholder="Tên hiển thị" value="${esc(getName())}"><div class="row" style="margin-top:0"><button class="btn pri" type="submit">Lưu</button><button class="btn" type="button" id="ncancel">Hủy</button></div></form></div>
   <input type="file" id="file" accept="image/*" hidden>
  </section>
  ${note?`<p class="ok">${esc(note)}</p>`:''}
  ${user?'':`<section class="panel"><div class="tabs"><button class="chip ${reg?'':'on'}" data-a="login">Đăng nhập</button><button class="chip ${reg?'on':''}" data-a="reg">Đăng ký</button></div>
   <form class="authf" id="af"><input class="f" id="un" ${cloudOn()?'type="email" placeholder="Email" autocomplete="email"':'placeholder="Tên đăng nhập" autocomplete="username"'} required>
   <input class="f" id="pw" type="password" placeholder="Mật khẩu (từ 6 ký tự)" autocomplete="${reg?'new-password':'current-password'}" required>
-  ${reg?'<input class="f" id="pw2" type="password" placeholder="Nhập lại mật khẩu" autocomplete="new-password" required>':''}
+  ${reg?'<input class="f" id="pw2" type="password" placeholder="Nhập lại mật khẩu" autocomplete="new-password" required><input class="f" id="dnm" maxlength="24" placeholder="Tên hiển thị (không bắt buộc)">':''}
   <div class="err" id="err"></div><button class="btn pri" type="submit">${reg?'Tạo tài khoản':'Đăng nhập'}</button></form>
   <p class="hint">${cloudOn()?'Phim yêu thích, lịch sử xem và ảnh đại diện được sao lưu lên đám mây và tự đồng bộ trên mọi thiết bị khi bạn đăng nhập cùng email. Dữ liệu hiện tại của bạn sẽ được gộp vào tài khoản.':'Tài khoản được lưu ngay trên trình duyệt này. Phim yêu thích và lịch sử hiện tại sẽ được chuyển vào tài khoản khi đăng ký.'}</p></section>`}
  <section class="panel"><h3>Chế độ TV</h3><p class="hint" style="margin:0 0 4px">Giao diện lớn, thanh bên ở bên trái, điều khiển bằng phím mũi tên và nút OK của remote.</p><div class="row"><button class="btn ${tvOn()?'pri':''}" id="tvb">${tvOn()?'Đang bật · Bấm để tắt':'Bật chế độ TV'}</button></div></section>
@@ -734,6 +742,9 @@ function renderMe(note){
  ${list.length?'<button class="btn" id="clr" style="margin-left:auto">Xóa danh sách</button>':''}</div>`+
  (list.length?cards(list):`<p class="msg">${st.tab==='fav'?'Chưa có phim yêu thích. Mở một phim và bấm “Thêm vào yêu thích”.':'Chưa có lịch sử xem. Phim bạn xem sẽ hiện ở đây.'}</p>`);
 
+ $('#chname').onclick=()=>{$('#nf').hidden=false;$('#nin').focus()};
+ $('#ncancel').onclick=()=>{$('#nf').hidden=true};
+ $('#nf').onsubmit=e=>{e.preventDefault();setName($('#nin').value.trim().slice(0,24));renderMe('Đã cập nhật tên hiển thị.')};
  const pick=()=>$('#file').click();
  $('#ava').onclick=pick; $('#chava').onclick=pick;
  $('#file').onchange=e=>{const f=e.target.files[0];if(f)resizeImg(f,a=>{setAva(a);renderMe('Đã cập nhật ảnh đại diện.')})};
@@ -751,6 +762,7 @@ function renderMe(note){
    if(pw.length<6)return err('Mật khẩu cần ít nhất 6 ký tự.');
    if(reg&&pw!==$('#pw2').value)return err('Hai mật khẩu chưa khớp.');
    err('Đang xử lý...');
+   const nm0=reg?(($('#dnm')||{}).value||'').trim():'';
    try{
     const j=await cloudAuth(reg?'signup':'login',un,pw);
     if(!j.access_token){renderMe('Đã gửi email xác nhận. Hãy bấm liên kết trong email rồi đăng nhập.');return}
@@ -759,6 +771,7 @@ function renderMe(note){
     user='cloud:'+un.toLowerCase();ls.set('rd_session',user);
     const U2=users();U2[user]=U2[user]||{name:un};if(ga&&!U2[user].avatar)U2[user].avatar=ga;ls.set('rd_users',U2);
     store.set('fav',merge(store.get('fav'),gf));store.set('his',merge(store.get('his'),gh));
+    if(reg)setNameRaw(nm0||un.split('@')[0]);
     await syncPull();
     renderMe('Đăng nhập thành công. Dữ liệu đã được đồng bộ.');
    }catch(x){err(x.message||'Không kết nối được máy chủ.')}
@@ -773,7 +786,9 @@ function renderMe(note){
    U[un.toLowerCase()]={name:un,salt,hash:await hash(pw,salt),avatar:gAva};
    ls.set('rd_users',U);
    const gf=store.get('fav'), gh=store.get('his');
+   const nm1=(($('#dnm')||{}).value||'').trim();
    user=un.toLowerCase(); ls.set('rd_session',user);
+   if(nm1)setNameRaw(nm1);
    store.set('fav',merge(store.get('fav'),gf)); store.set('his',merge(store.get('his'),gh));
    renderMe('Tạo tài khoản thành công.');
   }else{
