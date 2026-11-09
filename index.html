@@ -400,6 +400,14 @@ html.tv .lbl{display:inline;font-style:normal;font-size:calc(14px * var(--s));fo
 html.tv #b-next,html.tv #b-eps{width:auto;align-items:center;gap:calc(6px * var(--s));padding:0 calc(14px * var(--s));border-radius:calc(24px * var(--s))}
 html.tv .epick{width:calc(400px * var(--s));padding:calc(22px * var(--s))}
 html.tv #b-next{display:flex}
+.card .im img{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:cover;display:block}
+.rail.ph{min-height:calc(var(--cw) * 1.5 + 70px)}
+/* TV: chế độ hiệu năng - bỏ hiệu ứng nặng */
+html.tv *,html.tv *::before,html.tv *::after{-webkit-backdrop-filter:none!important;backdrop-filter:none!important;box-shadow:none!important;text-shadow:none!important;transition:none!important;animation:none!important;filter:none!important}
+html.tv .spin{animation:spn .8s linear infinite!important}
+html.tv .rail{scroll-snap-type:none;scroll-behavior:auto}
+html.tv .top.solid{background:rgba(0,0,0,.92)}
+html.tv .hero::after{background:linear-gradient(to top,var(--bg) 2%,rgba(0,0,0,.5) 30%,transparent 62%)}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -478,9 +486,75 @@ const ls={
 cur=ls.get('rd_src','kk'); if(!SRC[cur])cur='kk';
 let user=ls.get('rd_session',null);
 const K=k=>user?k+':'+user:k;
-const store={get:k=>ls.get(K(k),[]),set:(k,v)=>ls.set(K(k),v)};
+const store={get:k=>ls.get(K(k),[]),set:(k,v)=>{ls.set(K(k),v);if(k==='fav'||k==='his')markDirty()}};
 const users=()=>ls.get('rd_users',{});
 const merge=(a,b)=>[...a,...b.filter(x=>!a.some(y=>y.slug===x.slug&&y.src===x.src))];
+
+/* ===== Sao lưu đám mây (Supabase) =====
+   Dán Project URL và anon key của Supabase vào 2 dòng dưới để bật đăng nhập + sao lưu. */
+const CLOUD={url:'https://prntjihczhukzvlafmim.supabase.co',key:'sb_publishable_GAw2HR1QEypz_Mu1S5dzgA_zJ_ceOhL'};
+const cloudOn=()=>!!(CLOUD.url&&CLOUD.key);
+function isCloud(){return !!user&&user.startsWith('cloud:')&&cloudOn()}
+const dn=()=>user?(user.startsWith('cloud:')?user.slice(6):user):'Khách';
+const viMsg=m=>/invalid login/i.test(m)?'Sai email hoặc mật khẩu.':/already (been )?registered/i.test(m)?'Email này đã được đăng ký.':/not confirmed/i.test(m)?'Email chưa được xác nhận. Hãy kiểm tra hộp thư.':/rate limit/i.test(m)?'Thao tác quá nhanh, hãy thử lại sau ít phút.':(m||'Không thực hiện được.');
+async function cloudAuth(kind,email,pw){
+ const r=await fetch(CLOUD.url+(kind==='signup'?'/auth/v1/signup':'/auth/v1/token?grant_type=password'),{method:'POST',headers:{apikey:CLOUD.key,'Content-Type':'application/json'},body:JSON.stringify({email,password:pw})});
+ const j=await r.json().catch(()=>({}));
+ if(!r.ok)throw new Error(viMsg(j.msg||j.error_description||j.message||j.error||''));
+ return j;
+}
+function cloudSave(j,email){
+ const old=ls.get('rd_cloud',{})||{};
+ ls.set('rd_cloud',{at:j.access_token,rt:j.refresh_token,exp:Math.floor(Date.now()/1000)+(j.expires_in||3600),uid:(j.user&&j.user.id)||old.uid,email});
+}
+async function cloudToken(){
+ const s=ls.get('rd_cloud',null);if(!s)return null;
+ if(s.exp-60>Date.now()/1000)return s;
+ try{
+  const r=await fetch(CLOUD.url+'/auth/v1/token?grant_type=refresh_token',{method:'POST',headers:{apikey:CLOUD.key,'Content-Type':'application/json'},body:JSON.stringify({refresh_token:s.rt})});
+  const j=await r.json();if(!r.ok)throw 0;
+  cloudSave(j,s.email);return ls.get('rd_cloud',null);
+ }catch(e){ls.del('rd_cloud');return null}
+}
+async function rest(method,path,body,extra){
+ const s=await cloudToken();if(!s)throw new Error('Phiên đăng nhập đã hết hạn, hãy đăng nhập lại.');
+ const r=await fetch(CLOUD.url+'/rest/v1'+path,{method,headers:Object.assign({apikey:CLOUD.key,Authorization:'Bearer '+s.at,'Content-Type':'application/json'},extra||{}),body:body?JSON.stringify(body):undefined});
+ if(!r.ok)throw new Error('Máy chủ trả về lỗi '+r.status);
+ return method==='GET'?r.json():null;
+}
+const snapshot=()=>({fav:store.get('fav'),his:store.get('his'),avatar:getAva()||null});
+let pushT;
+function markDirty(){
+ if(!isCloud())return;
+ ls.set('rd_dirty:'+user,1);clearTimeout(pushT);
+ pushT=setTimeout(()=>syncPush().catch(()=>{}),2500);
+}
+async function syncPush(){
+ if(!isCloud())return;
+ const s=await cloudToken();if(!s)return;
+ const now=new Date().toISOString();
+ await rest('POST','/backups?on_conflict=uid',{uid:s.uid,data:snapshot(),updated_at:now},{Prefer:'resolution=merge-duplicates,return=minimal'});
+ ls.set('rd_sync:'+user,now);ls.set('rd_dirty:'+user,0);
+}
+function setAvaRaw(a){const u=users();u[user]=u[user]||{};u[user].avatar=a;ls.set('rd_users',u)}
+async function syncPull(){
+ if(!isCloud())return;
+ const s=await cloudToken();if(!s)return;
+ const rows=await rest('GET','/backups?uid=eq.'+s.uid+'&select=data,updated_at');
+ const r=rows&&rows[0],dirty=ls.get('rd_dirty:'+user,0),last=ls.get('rd_sync:'+user,'');
+ if(!r||!r.data){await syncPush();return}
+ const d=r.data,rf=Array.isArray(d.fav)?d.fav:[],rh=Array.isArray(d.his)?d.his:[];
+ if(!dirty&&last&&new Date(r.updated_at)<=new Date(last))return;
+ if(!dirty&&last){
+  ls.set(K('fav'),rf);ls.set(K('his'),rh);if(d.avatar)setAvaRaw(d.avatar);
+  ls.set('rd_sync:'+user,r.updated_at);
+ }else{
+  ls.set(K('fav'),merge(store.get('fav'),rf));ls.set(K('his'),merge(store.get('his'),rh));
+  if(d.avatar&&!getAva())setAvaRaw(d.avatar);
+  await syncPush();
+ }
+}
+const syncTime=()=>{const t=ls.get('rd_sync:'+user,'');return t?new Date(t).toLocaleString('vi-VN'):'chưa có'};
 async function hash(pw,salt){
  const d=salt+':'+pw;
  try{const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(d));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}
@@ -490,6 +564,7 @@ const getAva=()=>user?(users()[user]||{}).avatar:ls.get('rd_avatar',null);
 function setAva(a){
  if(user){const u=users();u[user]=u[user]||{};u[user].avatar=a;ls.set('rd_users',u)}
  else if(a)ls.set('rd_avatar',a);else ls.del('rd_avatar');
+ markDirty();
 }
 function resizeImg(file,cb){
  const fr=new FileReader();
@@ -531,7 +606,7 @@ function cards(list,cls){
  if(!list.length)return '<p class="msg">Không có phim nào để hiển thị.</p>';
  return '<div class="'+(cls||'grid')+'">'+list.map((m,i)=>`
  <button class="card" data-i="${i}">
-  <div class="im" style="background-image:url('${esc(m.thumb)}')">${m.quality?`<span class="bds"><span class="bd o">${esc(m.quality)}</span></span>`:''}${m.ep?`<span class="bd o ep">${esc(m.ep)}</span>`:''}</div>
+  <div class="im">${m.thumb?`<img src="${esc(m.thumb)}" alt="" loading="lazy" decoding="async">`:''}${m.quality?`<span class="bds"><span class="bd o">${esc(m.quality)}</span></span>`:''}${m.ep?`<span class="bd o ep">${esc(m.ep)}</span>`:''}</div>
   <b>${esc(m.name)}</b><small>${esc(m.origin)}${m.year?' • '+esc(m.year):''}</small>
  </button>`).join('')+'</div>';
 }
@@ -568,30 +643,34 @@ function showHero(list){
  };
  const restart=()=>{
   clearInterval(heroT);
-  if(list.length>1&&!matchMedia('(prefers-reduced-motion:reduce)').matches)heroT=setInterval(()=>{i=(i+1)%list.length;draw()},6500);
+  if(list.length>1&&!tvOn()&&!matchMedia('(prefers-reduced-motion:reduce)').matches)heroT=setInterval(()=>{i=(i+1)%list.length;draw()},6500);
  };
  draw();restart();
 }
 
 function renderHome(){
  const S=SRC[cur], my=cur;
- view.innerHTML='<div id="hero" class="hero"></div><div class="hwrap">'+ROWS.map((r,i)=>`<section class="rowsec"><div class="rh"><h2>${r[0]}</h2><button class="btn sm" data-r="${i}">Xem thêm</button></div><div class="rail" id="r${i}"><p class="msg" style="padding:20px 0">Đang tải...</p></div></section>`).join('')+'</div>';
+ view.innerHTML='<div id="hero" class="hero"></div><div class="hwrap">'+ROWS.map((r,i)=>`<section class="rowsec"><div class="rh"><h2>${r[0]}</h2><button class="btn sm" data-r="${i}">Xem thêm</button></div><div class="rail ph" id="r${i}"><p class="msg" style="padding:20px 0">Đang tải...</p></div></section>`).join('')+'</div>';
  view.querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>{st={...st,v:'cat',cat:ROWS[b.dataset.r],p:1,from:null};render()});
- ROWS.forEach(async(r,i)=>{
-  const el=$('#r'+i);
+ const loadRow=async i=>{
+  const r=ROWS[i],el=$('#r'+i);
   try{
    let list=items(await api(my,rowPath(S,r,1)),my);
    if(!el.isConnected||cur!==my)return;
    if(i===0){showHero(list.slice(0,5));if(list.length>=14)list=list.slice(5)}
-   const L=list.slice(0,16);
+   const L=list.slice(0,tvOn()?12:16);
+   el.classList.remove('ph');
    el.innerHTML=cards(L,'rail');
    if(L.length)bindCards(L,el);
   }catch(e){
    if(!el.isConnected)return;
+   el.classList.remove('ph');
    el.innerHTML=`<p class="msg" style="padding:20px 0">Không tải được mục này (${esc(e.message)}).</p>`;
    if(i===0)noHero()
   }
- });
+ };
+ const io='IntersectionObserver' in window?new IntersectionObserver(es=>es.forEach(en=>{if(en.isIntersecting){io.unobserve(en.target);loadRow(+en.target.id.slice(1))}}),{rootMargin:'600px 0px'}):null;
+ ROWS.forEach((r,i)=>{if(i<3||!io)loadRow(i);else io.observe($('#r'+i))});
 }
 
 async function render(){
@@ -633,22 +712,22 @@ function renderMe(note){
  const reg=st.auth==='reg';
  view.innerHTML=`<h2>Cá nhân</h2>
  <section class="panel prof">
-  <button class="ava" id="ava" aria-label="Đổi ảnh đại diện">${ava?`<img src="${esc(ava)}" alt="">`:esc((user||'Khách')[0].toUpperCase())}</button>
-  <div class="pinfo"><b>${esc(user||'Khách')}</b><br><small>${user?'Dữ liệu đang lưu theo tài khoản này.':'Đăng nhập để lưu riêng và sao lưu dữ liệu.'}</small>
+  <button class="ava" id="ava" aria-label="Đổi ảnh đại diện">${ava?`<img src="${esc(ava)}" alt="">`:esc(dn()[0].toUpperCase())}</button>
+  <div class="pinfo"><b>${esc(dn())}</b><br><small>${user?(isCloud()?'Đã bật sao lưu đám mây. Đăng nhập ở thiết bị khác để lấy lại dữ liệu.':'Dữ liệu đang lưu theo tài khoản này.'):(cloudOn()?'Đăng nhập để sao lưu phim yêu thích và lịch sử lên đám mây.':'Đăng nhập để lưu riêng và sao lưu dữ liệu.')}</small>
    <div class="row"><button class="btn" id="chava">Đổi ảnh đại diện</button>${ava?'<button class="btn" id="rmava">Xóa ảnh</button>':''}${user?'<button class="btn" id="out">Đăng xuất</button>':''}</div></div>
   <input type="file" id="file" accept="image/*" hidden>
  </section>
  ${note?`<p class="ok">${esc(note)}</p>`:''}
  ${user?'':`<section class="panel"><div class="tabs"><button class="chip ${reg?'':'on'}" data-a="login">Đăng nhập</button><button class="chip ${reg?'on':''}" data-a="reg">Đăng ký</button></div>
-  <form class="authf" id="af"><input class="f" id="un" placeholder="Tên đăng nhập" autocomplete="username" required>
+  <form class="authf" id="af"><input class="f" id="un" ${cloudOn()?'type="email" placeholder="Email" autocomplete="email"':'placeholder="Tên đăng nhập" autocomplete="username"'} required>
   <input class="f" id="pw" type="password" placeholder="Mật khẩu (từ 6 ký tự)" autocomplete="${reg?'new-password':'current-password'}" required>
   ${reg?'<input class="f" id="pw2" type="password" placeholder="Nhập lại mật khẩu" autocomplete="new-password" required>':''}
   <div class="err" id="err"></div><button class="btn pri" type="submit">${reg?'Tạo tài khoản':'Đăng nhập'}</button></form>
-  <p class="hint">Tài khoản được lưu ngay trên trình duyệt này. Phim yêu thích và lịch sử hiện tại sẽ được chuyển vào tài khoản khi đăng ký.</p></section>`}
+  <p class="hint">${cloudOn()?'Phim yêu thích, lịch sử xem và ảnh đại diện được sao lưu lên đám mây và tự đồng bộ trên mọi thiết bị khi bạn đăng nhập cùng email. Dữ liệu hiện tại của bạn sẽ được gộp vào tài khoản.':'Tài khoản được lưu ngay trên trình duyệt này. Phim yêu thích và lịch sử hiện tại sẽ được chuyển vào tài khoản khi đăng ký.'}</p></section>`}
  <section class="panel"><h3>Chế độ TV</h3><p class="hint" style="margin:0 0 4px">Giao diện lớn, thanh bên ở bên trái, điều khiển bằng phím mũi tên và nút OK của remote.</p><div class="row"><button class="btn ${tvOn()?'pri':''}" id="tvb">${tvOn()?'Đang bật · Bấm để tắt':'Bật chế độ TV'}</button></div></section>
  <section class="panel"><h3>Ứng dụng</h3>${standalone()?'<p class="hint" style="margin:0">Bạn đang dùng FlixFlim như một ứng dụng.</p>':`<p class="hint" style="margin:0 0 4px">Thêm FlixFlim vào màn hình chính để mở nhanh như một ứng dụng.</p><div class="row"><button class="btn pri" id="inst2">Thêm vào màn hình chính</button></div>`}</section>
  ${tvOn()?'':`<section class="panel"><h3>Nguồn phim</h3><div class="chips">${Object.keys(SRC).map(k=>`<button class="chip ${k===cur?'on':''}" data-src="${k}">${SRC[k].n}</button>`).join('')}</div></section>`}
- <section class="panel"><h3>Sao lưu</h3><p class="hint" style="margin:0 0 4px">Tải file sao lưu để chuyển dữ liệu sang thiết bị hoặc trình duyệt khác.</p>
+ <section class="panel"><h3>Sao lưu</h3>${isCloud()?`<p class="hint" style="margin:0 0 8px">Đồng bộ đám mây lần cuối: ${esc(syncTime())}</p><div class="row" style="margin:0 0 12px"><button class="btn pri" id="sync">Đồng bộ ngay</button></div>`:''}<p class="hint" style="margin:0 0 4px">Tải file sao lưu để chuyển dữ liệu sang thiết bị hoặc trình duyệt khác.</p>
   <div class="row"><button class="btn" id="exp">Tải bản sao lưu</button><button class="btn" id="imp">Khôi phục từ file</button></div>
   <input type="file" id="impf" accept="application/json,.json" hidden></section>
  <div class="tabs"><button class="chip ${st.tab==='fav'?'on':''}" data-t="fav">Yêu thích (${fav.length})</button><button class="chip ${st.tab==='his'?'on':''}" data-t="his">Lịch sử xem (${his.length})</button>
@@ -659,12 +738,32 @@ function renderMe(note){
  $('#ava').onclick=pick; $('#chava').onclick=pick;
  $('#file').onchange=e=>{const f=e.target.files[0];if(f)resizeImg(f,a=>{setAva(a);renderMe('Đã cập nhật ảnh đại diện.')})};
  const rv=$('#rmava'); if(rv)rv.onclick=()=>{setAva(null);renderMe()};
- const out=$('#out'); if(out)out.onclick=()=>{user=null;ls.del('rd_session');renderMe('Đã đăng xuất.')};
+ const out=$('#out'); if(out)out.onclick=async()=>{if(isCloud()){try{await syncPush()}catch(e){}ls.del('rd_cloud')}user=null;ls.del('rd_session');renderMe('Đã đăng xuất.')};
+ const sy=$('#sync');
+ if(sy)sy.onclick=async()=>{sy.disabled=true;sy.textContent='Đang đồng bộ...';try{await syncPull();await syncPush();renderMe('Đã đồng bộ lên đám mây.')}catch(x){renderMe('Đồng bộ thất bại: '+x.message)}};
  view.querySelectorAll('[data-a]').forEach(b=>b.onclick=()=>{st.auth=b.dataset.a;renderMe()});
  const af=$('#af');
  if(af)af.onsubmit=async e=>{
   e.preventDefault();
   const un=$('#un').value.trim(), pw=$('#pw').value, err=m=>$('#err').textContent=m, U=users();
+  if(cloudOn()){
+   if(!/^\S+@\S+\.\S+$/.test(un))return err('Email chưa đúng.');
+   if(pw.length<6)return err('Mật khẩu cần ít nhất 6 ký tự.');
+   if(reg&&pw!==$('#pw2').value)return err('Hai mật khẩu chưa khớp.');
+   err('Đang xử lý...');
+   try{
+    const j=await cloudAuth(reg?'signup':'login',un,pw);
+    if(!j.access_token){renderMe('Đã gửi email xác nhận. Hãy bấm liên kết trong email rồi đăng nhập.');return}
+    const gf=store.get('fav'),gh=store.get('his'),ga=ls.get('rd_avatar',null);
+    cloudSave(j,un);
+    user='cloud:'+un.toLowerCase();ls.set('rd_session',user);
+    const U2=users();U2[user]=U2[user]||{name:un};if(ga&&!U2[user].avatar)U2[user].avatar=ga;ls.set('rd_users',U2);
+    store.set('fav',merge(store.get('fav'),gf));store.set('his',merge(store.get('his'),gh));
+    await syncPull();
+    renderMe('Đăng nhập thành công. Dữ liệu đã được đồng bộ.');
+   }catch(x){err(x.message||'Không kết nối được máy chủ.')}
+   return;
+  }
   if(reg){
    if(!/^[A-Za-z0-9_]{3,20}$/.test(un))return err('Tên đăng nhập gồm 3–20 ký tự: chữ, số hoặc dấu gạch dưới.');
    if(pw.length<6)return err('Mật khẩu cần ít nhất 6 ký tự.');
@@ -820,7 +919,7 @@ function mountMovie(src,slug,d){
  else si=Math.max(0,d.servers.findIndex(s=>s.eps.length));
  const eps=()=>d.servers[si].eps;
  const toast=(m,ms=1400)=>{const el=$('#pt');el.textContent=m;el.classList.add('show');clearTimeout(tT);tT=setTimeout(()=>el.classList.remove('show'),ms)};
- const poke=()=>{pw.classList.remove('idle');clearTimeout(tI);if(!v.paused&&!pw.classList.contains('emb')&&ep2.hidden)tI=setTimeout(()=>pw.classList.add('idle'),3000)};
+ const poke=()=>{pw.classList.remove('idle');upd();clearTimeout(tI);if(!v.paused&&!pw.classList.contains('emb')&&ep2.hidden)tI=setTimeout(()=>pw.classList.add('idle'),3000)};
  const syncPlay=()=>{const p=v.paused;pw.classList.toggle('paused',p);$('#b-play').innerHTML=ic(p?'play':'pause');$('#bp').innerHTML=ic('play');poke()};
  const syncMute=()=>{$('#b-mute').innerHTML=ic(v.muted||v.volume===0?'mute':'vol')};
  const toggle=()=>{if(!started){startPlay();return}v.paused?tryPlay():v.pause()};
@@ -953,7 +1052,7 @@ function mountMovie(src,slug,d){
  $('#b-next').onclick=nextEp;
  $('#b-eps').onclick=openPicker;
  const tp=$('#tvplay');if(tp)tp.onclick=startPlay;
- const te=$('#tveps');if(te)te.onclick=()=>{const c=epp.querySelector('.epb.on')||epp.querySelector('.epb');if(c){c.scrollIntoView({block:'center',behavior:'smooth'});c.focus({preventScroll:true})}};
+ const te=$('#tveps');if(te)te.onclick=()=>{const c=epp.querySelector('.epb.on')||epp.querySelector('.epb');if(c){c.scrollIntoView({block:'center'});c.focus({preventScroll:true})}};
  $('#b-mute').onclick=()=>{v.muted=!v.muted;if(!v.muted&&v.volume===0)v.volume=1};
  $('#b-pip').onclick=togglePip;$('#b-fs').onclick=toggleFs;
  $('#nbgo').onclick=nextEp;$('#nbx').onclick=cancelNext;
@@ -976,7 +1075,7 @@ function mountMovie(src,slug,d){
  v.onwaiting=()=>pw.classList.add('buf');
  v.onplaying=v.oncanplay=()=>pw.classList.remove('buf');
  v.onerror=()=>{if(!pw.classList.contains('emb')&&!hls){toast('Không phát được video, chuyển sang Embed.',2600);load(0,true)}};
- v.ontimeupdate=()=>{upd();const n=Date.now();if(n-lastSave>5000&&v.currentTime>5){lastSave=n;ls.set(posKey,{si,ei,t:Math.floor(v.currentTime)})}};
+ v.ontimeupdate=()=>{if(!pw.classList.contains('idle'))upd();const n=Date.now();if(n-lastSave>5000&&v.currentTime>5){lastSave=n;ls.set(posKey,{si,ei,t:Math.floor(v.currentTime)})}};
  v.onended=()=>{ls.set(posKey,{si,ei,t:0});ei<eps().length-1?showNext():toast('Bạn đã xem hết phim.',2400)};
  ['mousemove','touchstart','focusin'].forEach(ev=>pw.addEventListener(ev,poke,{passive:true}));
  document.onfullscreenchange=document.onwebkitfullscreenchange=()=>{if(!fsEl()&&pw.classList.contains('pfs'))exitFs();$('#b-fs').innerHTML=ic(isFull()?'xfs':'fs')};
@@ -1056,6 +1155,10 @@ const FSEL='button:not([disabled]),input,select,a[href]';
 const visible=el=>{const r=el.getBoundingClientRect();return r.width>0&&r.height>0&&!el.closest('[hidden]')};
 function moveFocus(dir){
  const cur=document.activeElement&&document.activeElement!==document.body?document.activeElement:null;
+ if(cur&&(dir==='ArrowLeft'||dir==='ArrowRight')&&cur.matches('.card,.epb,.chip,.dot')){
+  const sib=dir==='ArrowRight'?cur.nextElementSibling:cur.previousElementSibling;
+  if(sib&&sib.matches('button')){sib.focus({preventScroll:true});sib.scrollIntoView({block:'nearest',inline:'nearest'});return}
+ }
  const pf=document.querySelector('.pwrap.pfs');
  let els=[...document.querySelectorAll(FSEL)].filter(visible);
  if(pf)els=els.filter(el=>pf.contains(el));
@@ -1073,7 +1176,7 @@ function moveFocus(dir){
   if(ok&&sc<bs){bs=sc;best=el}
  }
  if(!best&&pf&&dir==='ArrowUp'){pf.focus({preventScroll:true});return}
- if(best){best.focus({preventScroll:true});if(!pf)best.scrollIntoView({block:'center',inline:'center',behavior:'smooth'})}
+ if(best){best.focus({preventScroll:true});if(!pf)best.scrollIntoView({block:(dir==='ArrowUp'||dir==='ArrowDown')?'center':'nearest',inline:'nearest'})}
 }
 function goBack(e){
  if(window.__closePicker&&document.querySelector('.epick:not([hidden])')){window.__closePicker();e.preventDefault();return}
@@ -1136,12 +1239,14 @@ if('serviceWorker' in navigator&&/^https?:/.test(location.protocol)&&!/FlixFlimT
 
 function updateTopAva(){
  const b=$('#avtb'), a=getAva();
- b.innerHTML=a?`<img src="${esc(a)}" alt="">`:esc((user||'K')[0].toUpperCase());
+ b.innerHTML=a?`<img src="${esc(a)}" alt="">`:esc(dn()[0].toUpperCase());
  const na=$('.navava');if(na)na.innerHTML=b.innerHTML;
 }
 $('#avtb').onclick=()=>{st={...st,v:'me',g:null,p:1};render()};
 const topEl=$('.top'), onScroll=()=>topEl.classList.toggle('solid',scrollY>60);
 addEventListener('scroll',onScroll,{passive:true});onScroll();
+if(isCloud())syncPull().then(()=>{if(st.v==='me')renderMe()}).catch(()=>{});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&isCloud())syncPull().then(()=>{if(st.v==='me')renderMe()}).catch(()=>{})});
 render();
 </script>
 </body>
