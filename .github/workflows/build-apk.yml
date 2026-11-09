@@ -1,0 +1,367 @@
+name: Build FlixFlim TV APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+    paths:
+      - 'index.html'
+      - '.github/workflows/build-apk.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.5'
+
+      - name: Tao du an Android TV
+        run: |
+          set -e
+          SRC="$GITHUB_WORKSPACE"
+          mkdir -p tvapp/app/src/main/java/com/flixflim/tv
+          mkdir -p tvapp/app/src/main/res/drawable
+          mkdir -p tvapp/app/src/main/res/mipmap-xxhdpi
+          mkdir -p tvapp/app/src/main/res/values
+          mkdir -p tvapp/app/src/main/assets
+          cd tvapp
+
+          cat > settings.gradle <<'EOF'
+          pluginManagement {
+              repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+          }
+          dependencyResolutionManagement {
+              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+          rootProject.name = "FlixFlimTV"
+          include ':app'
+          EOF
+
+          cat > build.gradle <<'EOF'
+          plugins {
+              id 'com.android.application' version '8.2.2' apply false
+          }
+          EOF
+
+          cat > gradle.properties <<'EOF'
+          org.gradle.jvmargs=-Xmx2g
+          android.useAndroidX=true
+          android.nonTransitiveRClass=true
+          EOF
+
+          cat > app/build.gradle <<'EOF'
+          plugins {
+              id 'com.android.application'
+          }
+
+          android {
+              namespace 'com.flixflim.tv'
+              compileSdk 34
+
+              defaultConfig {
+                  applicationId 'com.flixflim.tv'
+                  minSdk 21
+                  targetSdk 34
+                  versionCode 1
+                  versionName '1.0'
+              }
+
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_17
+                  targetCompatibility JavaVersion.VERSION_17
+              }
+          }
+
+          dependencies {
+              implementation 'androidx.webkit:webkit:1.8.0'
+          }
+          EOF
+
+          cat > app/src/main/AndroidManifest.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+              <uses-permission android:name="android.permission.INTERNET" />
+              <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+              <uses-feature android:name="android.software.leanback" android:required="false" />
+              <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+
+              <application
+                  android:allowBackup="false"
+                  android:hardwareAccelerated="true"
+                  android:icon="@mipmap/ic_launcher"
+                  android:banner="@drawable/banner"
+                  android:label="FlixFlim"
+                  android:theme="@style/AppTheme"
+                  android:usesCleartextTraffic="true">
+
+                  <activity
+                      android:name=".MainActivity"
+                      android:exported="true"
+                      android:screenOrientation="landscape"
+                      android:configChanges="orientation|screenSize|keyboard|keyboardHidden|navigation|uiMode|smallestScreenSize|screenLayout">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
+                          <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+                      </intent-filter>
+                  </activity>
+              </application>
+          </manifest>
+          EOF
+
+          cat > app/src/main/res/values/styles.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <resources>
+              <style name="AppTheme" parent="@android:style/Theme.Material.NoActionBar">
+                  <item name="android:windowBackground">@android:color/black</item>
+                  <item name="android:windowFullscreen">true</item>
+              </style>
+          </resources>
+          EOF
+
+          cat > app/src/main/java/com/flixflim/tv/MainActivity.java <<'EOF'
+          package com.flixflim.tv;
+
+          import android.app.Activity;
+          import android.os.Bundle;
+          import android.view.KeyEvent;
+          import android.view.View;
+          import android.view.ViewGroup;
+          import android.view.WindowManager;
+          import android.webkit.WebChromeClient;
+          import android.webkit.WebResourceRequest;
+          import android.webkit.WebResourceResponse;
+          import android.webkit.WebSettings;
+          import android.webkit.WebView;
+          import android.webkit.WebViewClient;
+          import android.widget.FrameLayout;
+
+          import androidx.webkit.WebViewAssetLoader;
+
+          public class MainActivity extends Activity {
+
+              private static final String START_URL =
+                      "https://appassets.androidplatform.net/assets/index.html?tv=1";
+
+              private WebView web;
+              private FrameLayout root;
+              private View customView;
+              private WebChromeClient.CustomViewCallback customCallback;
+
+              @Override
+              protected void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+                  getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+
+                  root = new FrameLayout(this);
+                  root.setBackgroundColor(0xFF000000);
+                  web = new WebView(this);
+                  web.setBackgroundColor(0xFF000000);
+                  root.addView(web, new FrameLayout.LayoutParams(
+                          ViewGroup.LayoutParams.MATCH_PARENT,
+                          ViewGroup.LayoutParams.MATCH_PARENT));
+                  setContentView(root);
+
+                  final WebViewAssetLoader loader = new WebViewAssetLoader.Builder()
+                          .addPathHandler("/assets/", new WebViewAssetLoader.AssetsPathHandler(this))
+                          .build();
+
+                  WebSettings s = web.getSettings();
+                  s.setJavaScriptEnabled(true);
+                  s.setDomStorageEnabled(true);
+                  s.setMediaPlaybackRequiresUserGesture(false);
+                  s.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+                  s.setUserAgentString(s.getUserAgentString() + " Android TV FlixFlimTV");
+
+                  web.setFocusable(true);
+                  web.setFocusableInTouchMode(true);
+
+                  web.setWebViewClient(new WebViewClient() {
+                      @Override
+                      public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+                          return loader.shouldInterceptRequest(request.getUrl());
+                      }
+                  });
+
+                  web.setWebChromeClient(new WebChromeClient() {
+                      @Override
+                      public void onShowCustomView(View view, WebChromeClient.CustomViewCallback callback) {
+                          if (customView != null) {
+                              callback.onCustomViewHidden();
+                              return;
+                          }
+                          customView = view;
+                          customCallback = callback;
+                          root.addView(view, new FrameLayout.LayoutParams(
+                                  ViewGroup.LayoutParams.MATCH_PARENT,
+                                  ViewGroup.LayoutParams.MATCH_PARENT));
+                          web.setVisibility(View.GONE);
+                      }
+
+                      @Override
+                      public void onHideCustomView() {
+                          hideCustom();
+                      }
+                  });
+
+                  web.loadUrl(START_URL);
+                  web.requestFocus();
+                  hideBars();
+              }
+
+              private void hideCustom() {
+                  if (customView == null) return;
+                  root.removeView(customView);
+                  customView = null;
+                  if (customCallback != null) {
+                      customCallback.onCustomViewHidden();
+                      customCallback = null;
+                  }
+                  web.setVisibility(View.VISIBLE);
+                  web.requestFocus();
+              }
+
+              private void hideBars() {
+                  getWindow().getDecorView().setSystemUiVisibility(
+                          View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                                  | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                                  | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                                  | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                                  | View.SYSTEM_UI_FLAG_FULLSCREEN
+                                  | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
+              }
+
+              @Override
+              public void onWindowFocusChanged(boolean hasFocus) {
+                  super.onWindowFocusChanged(hasFocus);
+                  if (hasFocus) hideBars();
+              }
+
+              private String mediaKey(int code) {
+                  switch (code) {
+                      case KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE: return "MediaPlayPause";
+                      case KeyEvent.KEYCODE_MEDIA_PLAY: return "MediaPlay";
+                      case KeyEvent.KEYCODE_MEDIA_PAUSE: return "MediaPause";
+                      case KeyEvent.KEYCODE_MEDIA_FAST_FORWARD: return "MediaFastForward";
+                      case KeyEvent.KEYCODE_MEDIA_REWIND: return "MediaRewind";
+                      default: return null;
+                  }
+              }
+
+              @Override
+              public boolean dispatchKeyEvent(KeyEvent e) {
+                  String k = mediaKey(e.getKeyCode());
+                  if (k != null) {
+                      if (e.getAction() == KeyEvent.ACTION_DOWN) {
+                          web.evaluateJavascript(
+                                  "document.dispatchEvent(new KeyboardEvent('keydown',{key:'" + k + "'}))",
+                                  null);
+                      }
+                      return true;
+                  }
+                  return super.dispatchKeyEvent(e);
+              }
+
+              @Override
+              public void onBackPressed() {
+                  web.evaluateJavascript(
+                          "(function(){try{return !!(window.tvBack&&window.tvBack())}catch(e){return false}})()",
+                          value -> {
+                              if ("true".equals(value)) return;
+                              if (customView != null) {
+                                  hideCustom();
+                                  return;
+                              }
+                              finish();
+                          });
+              }
+
+              @Override
+              protected void onPause() {
+                  super.onPause();
+                  web.onPause();
+              }
+
+              @Override
+              protected void onResume() {
+                  super.onResume();
+                  web.onResume();
+              }
+
+              @Override
+              protected void onDestroy() {
+                  root.removeAllViews();
+                  web.destroy();
+                  super.onDestroy();
+              }
+          }
+          EOF
+
+          cp "$SRC/index.html" app/src/main/assets/index.html
+          cp "$SRC/icon-192.png" app/src/main/assets/icon-192.png
+          cp "$SRC/icon-512.png" app/src/main/assets/icon-512.png
+          cp "$SRC/apple-touch-icon.png" app/src/main/assets/apple-touch-icon.png
+          cp "$SRC/icon-192.png" app/src/main/res/mipmap-xxhdpi/ic_launcher.png
+
+          pip install --quiet pillow
+          ICON="$SRC/icon-192.png" python3 - <<'PY'
+          import os
+          from PIL import Image, ImageDraw, ImageFont
+          W, H = 320, 180
+          im = Image.new('RGB', (W, H), (10, 8, 14))
+          try:
+              ic = Image.open(os.environ['ICON']).convert('RGB').resize((84, 84))
+              m = Image.new('L', (84, 84), 0)
+              ImageDraw.Draw(m).rounded_rectangle([0, 0, 83, 83], radius=22, fill=255)
+              im.paste(ic, (28, 48), m)
+          except Exception:
+              pass
+          d = ImageDraw.Draw(im)
+          try:
+              f = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 36)
+          except Exception:
+              f = ImageFont.load_default()
+          d.text((126, 66), 'FlixFlim', font=f, fill=(255, 255, 255))
+          im.save('app/src/main/res/drawable/banner.png')
+          PY
+
+      - name: Build APK
+        run: |
+          cd tvapp
+          gradle assembleDebug --no-daemon --stacktrace
+
+      - name: Dat ten APK
+        run: cp tvapp/app/build/outputs/apk/debug/app-debug.apk FlixFlim-TV.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: FlixFlim-TV
+          path: FlixFlim-TV.apk
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: tv-latest
+          name: FlixFlim TV (APK moi nhat)
+          files: FlixFlim-TV.apk
+          make_latest: true
